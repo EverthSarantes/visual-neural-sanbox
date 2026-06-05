@@ -2,6 +2,7 @@ import { Layer } from './Layer.js';
 import { getConnectionMethod } from '../connection_methods/registry.js';
 import { getLossMethod } from '../loss_methods/registry.js';
 import { Connection } from './Connection.js';
+import { getInitializationMethod } from '../initialization_methods/registry.js';
 
 export class Network {
     /**
@@ -14,10 +15,40 @@ export class Network {
         this.lossTypeId = getLossMethod(lossTypeId) ? lossTypeId : 'mse';
         this.learningRate = learningRate;
 
+        this.initializationStrategyId = 'xavier'; // 'random', 'xavier' o 'he'
+        this.momentum = 0.9;                     // Factor de inercia (0 a 1)
+        this.weightDecay = 0.0001;               // Penalización L2 de regularización
+        this.dropoutRate = 0.0;                  // 0.0 significa apagado. Ej: 0.2 es 20% de probabilidad
+        this.batchSize = 32;
+
         this.epoch = 0;
         this.currentLoss = 0;
         this.currentAccuracy = 0;
         this.isTraining = false;
+    }
+
+    /**
+     * Motor quirúrgico de inicialización. Recorre el grafo una vez conectado y calcula los fan-in / fan-out
+     */
+    applyWeightInitialization() {
+        const strategy = getInitializationMethod(this.initializationStrategyId);
+
+        this.layers.forEach(layer => {
+            layer.neurons.forEach(neuron => {
+                const nIn = neuron.inputs.length > 0 ? neuron.inputs.length : 1;
+                const nOut = neuron.outputs.length > 0 ? neuron.outputs.length : 1;
+
+                neuron.bias = Math.random() * 0.1 - 0.05;
+                neuron.biasVelocity = 0;
+                neuron.isDropped = false;
+
+                neuron.outputs.forEach(connection => {
+                    connection.weight = strategy.generateWeight(nIn, nOut);
+                    connection.velocity = 0;
+                    connection.isDropped = false;
+                });
+            });
+        });
     }
 
     /**
@@ -30,18 +61,7 @@ export class Network {
         this.isTraining = false;
         
         // Reiniciar aleatoriamente todos los pesos y sesgos
-        this.layers.forEach(layer => {
-            layer.neurons.forEach(neuron => {
-                neuron.bias = Math.random() * 2 - 1;
-                neuron.value = 0;
-                neuron.netInput = 0;
-                neuron.errorSignal = 0;
-                
-                neuron.inputs.forEach(connection => {
-                    connection.weight = Math.random() * 2 - 1;
-                });
-            });
-        });
+        this.applyWeightInitialization();
     }
 
     buildArchitecture(inputCount, hiddenTopology, outputCount) {
@@ -65,17 +85,15 @@ export class Network {
         this.layers.push(outputLayer);
 
         this.connectLayers();
+        this.applyWeightInitialization();
     }
 
     connectLayers() {
         for (let i = 0; i < this.layers.length - 1; i++) {
             const currentLayer = this.layers[i];
             const nextLayer = this.layers[i + 1];
-
             const method = getConnectionMethod(currentLayer.connectionTypeId);
-            if (method) {
-                method.execute(currentLayer, nextLayer);
-            }
+            if (method) method.execute(currentLayer, nextLayer);
         }
     }
 
@@ -97,6 +115,7 @@ export class Network {
     rebuildConnections() {
         this.clearAllConnections();
         this.connectLayers();
+        this.applyWeightInitialization();
     }
 
     /**
