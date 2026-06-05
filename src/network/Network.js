@@ -15,7 +15,7 @@ export class Network {
         this.lossTypeId = getLossMethod(lossTypeId) ? lossTypeId : 'mse';
         this.learningRate = learningRate;
 
-        this.initializationStrategyId = 'xavier'; // 'random', 'xavier' o 'he'
+        this.initializationStrategyId = 'random'; // 'random', 'xavier' o 'he'
         this.momentum = 0.9;                     // Factor de inercia (0 a 1)
         this.weightDecay = 0.0001;               // Penalización L2 de regularización
         this.dropoutRate = 0.0;                  // 0.0 significa apagado. Ej: 0.2 es 20% de probabilidad
