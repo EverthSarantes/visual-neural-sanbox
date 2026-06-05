@@ -7,21 +7,21 @@ export const activationRegistry = {
         id: 'relu',
         name: 'ReLU',
         description: 'Modela umbrales biológicos eliminando valores negativos. Devuelve 0 si la entrada es negativa, o el mismo valor si es positiva.',
-        feed: reluLogic.feed,
+        calculate: reluLogic.feed,
         derivative: reluLogic.derivative
     },
     sigmoid: {
         id: 'sigmoid',
         name: 'Sigmoide',
         description: 'Curva suave en forma de "S" que transforma valores en un rango de 0 a 1. Ideal para decisiones probabilísticas finales.',
-        feed: sigmoidLogic.feed,
+        calculate: sigmoidLogic.feed,
         derivative: sigmoidLogic.derivative
     },
     tanh: {
         id: 'tanh',
         name: 'Tangente Hiperbólica (Tanh)',
         description: 'Similar a la sigmoide pero con un rango de -1 a 1. Mantiene las señales balanceadas y con media cercana a cero.',
-        feed: tanhLogic.feed,
+        calculate: tanhLogic.feed,
         derivative: tanhLogic.derivative
     }
 };
