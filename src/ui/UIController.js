@@ -23,19 +23,26 @@ export class UIController {
             panelRight: document.getElementById('panel-right'),
             btnToggleLeft: document.getElementById('btn-toggle-left'),
             btnToggleRight: document.getElementById('btn-toggle-right'),
+
             sliderLr: document.getElementById('param-lr'),
             valLr: document.getElementById('val-lr'),
+            sliderMomentum: document.getElementById('param-momentum'),
+            valMomentum: document.getElementById('val-momentum'),
+            sliderDropout: document.getElementById('param-dropout'),
+            valDropout: document.getElementById('val-dropout'),
+            sliderDecay: document.getElementById('param-decay'),
+            valDecay: document.getElementById('val-decay'),
+
+            selectBatchSize: document.getElementById('param-batch-size'),
             selectLossType: document.getElementById('param-loss-type'),
             selectInitType: document.getElementById('param-init-type'),
+            
             inspectorEmpty: document.getElementById('inspector-empty-state'),
             inspectorContent: document.getElementById('inspector-content'),
             inspectType: document.getElementById('inspect-type'),
             inspectId: document.getElementById('inspect-id'),
             inspectValue: document.getElementById('inspect-value'),
             inspectNet: document.getElementById('inspect-net'),
-            inspectEditableLabel: document.getElementById('inspect-editable-label'),
-            inspectEditableValue: document.getElementById('inspect-editable-value'),
-            btnApplyInspect: document.getElementById('btn-apply-inspect'),
             dynamicActions: document.getElementById('inspector-dynamic-actions'),
             lblLoss: document.getElementById('lbl-current-loss'),
             lblAccuracy: document.getElementById('lbl-current-accuracy'),
@@ -74,6 +81,31 @@ export class UIController {
             const val = parseFloat(e.target.value);
             this.dom.valLr.innerText = val.toFixed(3);
             this.network.learningRate = val;
+        });
+
+        this.dom.sliderMomentum.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            this.dom.valMomentum.innerText = val.toFixed(2);
+            this.network.momentum = val;
+        });
+
+        this.dom.sliderDropout.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            this.dom.valDropout.innerText = val.toFixed(2);
+            this.network.dropoutRate = val;
+            
+            this.renderer.render(this.network); 
+        });
+
+        this.dom.sliderDecay.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            this.dom.valDecay.innerText = val.toFixed(4);
+            this.network.weightDecay = val;
+        });
+
+        this.dom.selectBatchSize.addEventListener('change', (e) => {
+            const val = parseInt(e.target.value, 10);
+            this.network.batchSize = val;
         });
 
         this.dom.selectInitType.addEventListener('change', (e) => {
