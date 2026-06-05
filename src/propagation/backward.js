@@ -1,0 +1,50 @@
+import { getActivation } from '../activation_methods/registry.js';
+import { getLossMethod } from '../loss_methods/registry.js';
+
+/**
+ * Ejecuta la retropropagación (Backward Pass) para calcular las señales de error (gradientes)
+ * de cada neurona en el grafo, moviéndose de derecha a izquierda.
+ * @param {Network} network - La instancia maestra de la red.
+ * @param {Array<number>} targetVector - Array con los valores reales esperados del CSV (Target).
+ */
+export function backwardPass(network, targetVector) {
+    if (network.layers.length < 2) return;
+
+    const totalLayers = network.layers.length;
+
+    const outputLayer = network.layers[totalLayers - 1];
+    const lossMethod = getLossMethod(network.lossTypeId);
+    const outputActivationMethod = getActivation(outputLayer.activationId);
+
+    outputLayer.neurons.forEach((neuron, idx) => {
+        if (neuron.isDropped) {
+            neuron.errorSignal = 0;
+            return;
+        }
+
+        const lossTerm = lossMethod.errorSignalTerm(neuron.value, targetVector[idx] || 0);
+
+        neuron.errorSignal = lossTerm * outputActivationMethod.derivative(neuron.netInput);
+    });
+
+    for (let i = totalLayers - 2; i > 0; i--) {
+        const layer = network.layers[i];
+        const activationMethod = getActivation(layer.activationId);
+
+        layer.neurons.forEach(neuron => {
+            if (neuron.isDropped) {
+                neuron.errorSignal = 0;
+                return;
+            }
+
+            let errorSum = 0;
+            neuron.outputs.forEach(connection => {
+                if (!connection.isDropped && !connection.to.isDropped) {
+                    errorSum += connection.to.errorSignal * connection.weight;
+                }
+            });
+
+            neuron.errorSignal = errorSum * activationMethod.derivative(neuron.netInput);
+        });
+    }
+}
