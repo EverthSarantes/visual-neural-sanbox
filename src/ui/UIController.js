@@ -269,7 +269,7 @@ export class UIController {
             btnLeft.className = 'w-full bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg text-xs mb-2 font-medium transition-colors';
             btnLeft.innerText = '⬅️ Insertar Capa a la Izquierda';
             btnLeft.onclick = () => {
-                this.network.insertHiddenLayerAt(idx); // Inserta exactamente en la posición actual empujándola a la derecha
+                this.network.insertHiddenLayerAt(idx);
                 this.closeInspector();
             };
             container.appendChild(btnLeft);
@@ -281,7 +281,7 @@ export class UIController {
             btnRight.className = 'w-full bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg text-xs mb-4 font-medium transition-colors';
             btnRight.innerText = '➡️ Insertar Capa a la Derecha';
             btnRight.onclick = () => {
-                this.network.insertHiddenLayerAt(idx + 1); // Inserta una posición adelante
+                this.network.insertHiddenLayerAt(idx + 1);
                 this.closeInspector();
             };
             container.appendChild(btnRight);
@@ -306,7 +306,6 @@ export class UIController {
     renderStandardInspector(type, object, container) {
         document.getElementById('row-inspect-value').style.display = 'flex';
         
-        // CONTROL DE PARÁMETROS NUMÉRICOS (Bias o Weight)
         const label = document.createElement('label');
         label.className = 'block text-slate-400 mb-1 text-xs';
         label.innerText = type === 'neuron' ? 'Sesgo (Bias):' : 'Peso (Weight):';
@@ -328,7 +327,7 @@ export class UIController {
             if (isNaN(val)) return;
             if (type === 'neuron') {
                 object.bias = val;
-                object.activate(); // Sincronizar el valor inmediatamente
+                object.activate();
             } else {
                 object.weight = val;
             }
@@ -341,7 +340,8 @@ export class UIController {
         container.appendChild(label);
         container.appendChild(wrapper);
 
-        // CONTROLES EXCLUSIVOS DE LA NEURONA (Activación Individual)
+        const currentLayerIdx = this.network.layers.findIndex(l => l.neurons.some(n => n.id === object.id));
+
         if (type === 'neuron') {
             document.getElementById('row-inspect-net').style.display = 'flex';
             this.dom.inspectValue.innerText = object.value.toFixed(4);
@@ -349,7 +349,7 @@ export class UIController {
 
             const labelAct = document.createElement('label');
             labelAct.className = 'block text-slate-400 mb-1 text-xs pt-1';
-            labelAct.innerText = 'Función de Activación de esta Neurona:';
+            labelAct.innerText = 'Función de Activación:';
             
             const selectAct = document.createElement('select');
             selectAct.className = 'w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white mb-4 focus:outline-none focus:border-indigo-500';
@@ -368,12 +368,101 @@ export class UIController {
                 this.renderer.render(this.network);
                 this.updateInspectorValues();
             });
-
             container.appendChild(labelAct);
             container.appendChild(selectAct);
 
-            // BOTÓN DE ELIMINACIÓN DE NEURONA
-            const layerAsociada = this.network.layers.find(l => l.neurons.some(n => n.id === object.id));
+            if (currentLayerIdx > 0) {
+                const prevLayer = this.network.layers[currentLayerIdx - 1];
+                
+                const unconnectedPrevNeurons = prevLayer.neurons.filter(prevNeuron => 
+                    !prevNeuron.outputs.some(conn => conn.to.id === object.id)
+                );
+
+                if (unconnectedPrevNeurons.length > 0) {
+                    const divider = document.createElement('hr');
+                    divider.className = 'border-slate-800 my-3';
+                    container.appendChild(divider);
+
+                    const labelLeft = document.createElement('label');
+                    labelLeft.className = 'block text-slate-400 mb-1 text-xs';
+                    labelLeft.innerText = '🔌 Traer Enlace desde la Izquierda:';
+
+                    const selectLeft = document.createElement('select');
+                    selectLeft.className = 'w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white mb-2 focus:outline-none focus:border-indigo-500';
+                    
+                    unconnectedPrevNeurons.forEach(n => {
+                        const opt = document.createElement('option');
+                        opt.value = n.id;
+                        opt.innerText = `Nodo origen (${n.id.split('_').pop()})`;
+                        selectLeft.appendChild(opt);
+                    });
+
+                    const btnAddLeft = document.createElement('button');
+                    btnAddLeft.className = 'w-full bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/50 p-2 rounded-lg text-xs font-semibold transition-colors mb-2';
+                    btnAddLeft.innerText = '⚡ Conectar desde la Izquierda';
+                    btnAddLeft.onclick = () => {
+                        const sourceNeuron = prevLayer.neurons.find(n => n.id === selectLeft.value);
+                        if (sourceNeuron) {
+                            this.network.addManualConnection(sourceNeuron, object);
+                            this.openInspector('neuron', object);
+                        }
+                    };
+
+                    container.appendChild(labelLeft);
+                    container.appendChild(selectLeft);
+                    container.appendChild(btnAddLeft);
+                }
+            }
+
+
+            if (currentLayerIdx !== -1 && currentLayerIdx < this.network.layers.length - 1) {
+                const nextLayer = this.network.layers[currentLayerIdx + 1];
+                
+                const unconnectedNextNeurons = nextLayer.neurons.filter(nextNeuron => 
+                    !object.outputs.some(conn => conn.to.id === nextNeuron.id)
+                );
+
+                if (unconnectedNextNeurons.length > 0) {
+                    const divider = document.createElement('hr');
+                    divider.className = 'border-slate-800 my-3';
+                    container.appendChild(divider);
+
+                    const labelRight = document.createElement('label');
+                    labelRight.className = 'block text-slate-400 mb-1 text-xs';
+                    labelRight.innerText = '🔌 Enviar Enlace hacia la Derecha:';
+
+                    const selectRight = document.createElement('select');
+                    selectRight.className = 'w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white mb-2 focus:outline-none focus:border-indigo-500';
+                    
+                    unconnectedNextNeurons.forEach(n => {
+                        const opt = document.createElement('option');
+                        opt.value = n.id;
+                        opt.innerText = `Nodo destino (${n.id.split('_').pop()})`;
+                        selectRight.appendChild(opt);
+                    });
+
+                    const btnAddRight = document.createElement('button');
+                    btnAddRight.className = 'w-full bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/50 p-2 rounded-lg text-xs font-semibold transition-colors mb-4';
+                    btnAddRight.innerText = '⚡ Conectar hacia la Derecha';
+                    btnAddRight.onclick = () => {
+                        const targetNeuron = nextLayer.neurons.find(n => n.id === selectRight.value);
+                        if (targetNeuron) {
+                            this.network.addManualConnection(object, targetNeuron);
+                            this.openInspector('neuron', object);
+                        }
+                    };
+
+                    container.appendChild(labelRight);
+                    container.appendChild(selectRight);
+                    container.appendChild(btnAddRight);
+                }
+            }
+
+            const dividerFinal = document.createElement('hr');
+            dividerFinal.className = 'border-slate-800 my-3';
+            container.appendChild(dividerFinal);
+
+            const layerAsociada = this.network.layers[currentLayerIdx];
             const btnDeleteN = document.createElement('button');
             
             if (layerAsociada && layerAsociada.neurons.length <= 1) {
@@ -385,9 +474,7 @@ export class UIController {
                 btnDeleteN.innerText = '🗑️ Eliminar esta Neurona';
                 btnDeleteN.onclick = () => {
                     const exito = this.network.removeNeuron(object.id);
-                    if (exito) {
-                        this.closeInspector();
-                    }
+                    if (exito) this.closeInspector();
                 };
             }
             container.appendChild(btnDeleteN);
@@ -395,6 +482,15 @@ export class UIController {
         } else {
             document.getElementById('row-inspect-net').style.display = 'none';
             this.dom.inspectValue.innerText = object.weight.toFixed(4);
+
+            const btnDeleteConn = document.createElement('button');
+            btnDeleteConn.className = 'w-full bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800/60 p-2 rounded-lg text-xs font-bold transition-colors mt-4';
+            btnDeleteConn.innerText = '🗑️ Romper esta Conexión';
+            btnDeleteConn.onclick = () => {
+                const exito = this.network.removeConnection(object.id);
+                if (exito) this.closeInspector();
+            };
+            container.appendChild(btnDeleteConn);
         }
     }
 }

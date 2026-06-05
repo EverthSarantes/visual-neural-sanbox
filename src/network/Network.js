@@ -1,6 +1,7 @@
 import { Layer } from './Layer.js';
 import { getConnectionMethod } from '../connection_methods/registry.js';
 import { getLossMethod } from '../loss_methods/registry.js';
+import { Connection } from './Connection.js';
 
 export class Network {
     /**
@@ -172,5 +173,39 @@ export class Network {
         // Re-calcular todas las conexiones densas de la red
         this.rebuildConnections();
         return true;
+    }
+
+    /**
+     * Elimina una conexión específica de la red usando su ID
+     * @param {string} connectionId 
+     */
+    removeConnection(connectionId) {
+        let found = false;
+
+        this.layers.forEach(layer => {
+            layer.neurons.forEach(neuron => {
+                const originalLength = neuron.outputs.length;
+                neuron.outputs = neuron.outputs.filter(c => c.id !== connectionId);
+                if (neuron.outputs.length < originalLength) found = true;
+
+                neuron.inputs = neuron.inputs.filter(c => c.id !== connectionId);
+            });
+        });
+
+        return found;
+    }
+
+    /**
+     * Añade una conexión manual entre dos objetos neurona directamente
+     * @param {Neuron} fromNeuron 
+     * @param {Neuron} toNeuron 
+     */
+    addManualConnection(fromNeuron, toNeuron) {
+        const connectionId = `c_${fromNeuron.id}_to_${toNeuron.id}`;
+        if (fromNeuron.outputs.some(c => c.to.id === toNeuron.id)) return;
+
+        const connection = new Connection(connectionId, fromNeuron, toNeuron);
+        fromNeuron.outputs.push(connection);
+        toNeuron.inputs.push(connection);
     }
 }
