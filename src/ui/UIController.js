@@ -3,6 +3,7 @@ import { activationRegistry } from '../activation_methods/registry.js';
 import { connectionRegistry } from '../connection_methods/registry.js';
 import { lossRegistry } from '../loss_methods/registry.js';
 import { initializationRegistry } from '../initialization_methods/registry.js';
+import { CsvParser } from '../utils/CsvParser.js';
 
 export class UIController {
     /**
@@ -12,9 +13,9 @@ export class UIController {
     constructor(network, networkRenderer) {
         this.network = network;
         this.renderer = networkRenderer;
-        
-        // Almacenar el componente que se está inspeccionando actualmente
+        this.csvParser = new CsvParser();
         this.activeInspectedComponent = null;
+        this.datasetDiagnostics = null;
 
         // Cachear elementos críticos del DOM
         this.dom = {
@@ -23,6 +24,14 @@ export class UIController {
             panelRight: document.getElementById('panel-right'),
             btnToggleLeft: document.getElementById('btn-toggle-left'),
             btnToggleRight: document.getElementById('btn-toggle-right'),
+
+            dropzone: document.getElementById('csv-dropzone'),
+            fileInput: document.getElementById('csv-file-input'),
+            mappingArea: document.getElementById('csv-mapping-area'),
+            fileNameLabel: document.getElementById('csv-file-name'),
+            btnResetCsv: document.getElementById('btn-reset-csv'),
+            columnsListContainer: document.getElementById('csv-columns-list'),
+            btnConfirmMapping: document.getElementById('btn-confirm-mapping'),
 
             sliderLr: document.getElementById('param-lr'),
             valLr: document.getElementById('val-lr'),
@@ -52,6 +61,7 @@ export class UIController {
         this.populateLossSelect();
         this.populateInitializationSelect();
         this.initEventListeners();
+        this.initCsvListeners();
         this.syncMetrics();
     }
 
@@ -121,6 +131,46 @@ export class UIController {
         window.addEventListener('resize', () => {
             this.renderer.resize();
             this.renderer.render(this.network);
+        });
+    }
+
+    /**
+     * Inicializa los eventos de arrastre y selección del archivo CSV
+     */
+    initCsvListeners() {
+        this.dom.dropzone.addEventListener('click', () => this.dom.fileInput.click());
+
+        this.dom.fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) this.handleCsvUpload(e.target.files[0]);
+        });
+
+        this.dom.dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            this.dom.dropzone.classList.add('border-indigo-500', 'bg-indigo-950/10');
+        });
+
+        this.dom.dropzone.addEventListener('dragleave', () => {
+            this.dom.dropzone.classList.remove('border-indigo-500', 'bg-indigo-950/10');
+        });
+
+        this.dom.dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.dom.dropzone.classList.remove('border-indigo-500', 'bg-indigo-950/10');
+            if (e.dataTransfer.files.length > 0) {
+                this.dom.fileInput.files = e.dataTransfer.files;
+                this.handleCsvUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        this.dom.btnResetCsv.addEventListener('click', () => {
+            this.dom.fileInput.value = '';
+            this.dom.mappingArea.classList.add('hidden');
+            this.dom.dropzone.classList.remove('hidden');
+            this.datasetDiagnostics = null;
+        });
+
+        this.dom.btnConfirmMapping.addEventListener('click', () => {
+            this.compileSelectedArchitecture();
         });
     }
 
@@ -554,5 +604,134 @@ export class UIController {
             };
             container.appendChild(btnDeleteConn);
         }
+    }
+
+    /**
+     * Procesa el archivo y dispara el renderizado de los selectores alineados
+     */
+    async handleCsvUpload(file) {
+        try {
+            this.dom.fileNameLabel.innerText = file.name;
+            this.datasetDiagnostics = await this.csvParser.scanFile(file);
+
+            this.dom.dropzone.classList.add('hidden');
+            this.dom.mappingArea.classList.remove('hidden');
+
+            this.renderColumnMappers();
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    /**
+     * Pinta cada columna de forma ultra-compacta, adaptando las opciones a su naturaleza matemática
+     */
+    renderColumnMappers() {
+        this.dom.columnsListContainer.innerHTML = '';
+
+        Object.values(this.datasetDiagnostics).forEach(col => {
+            const row = document.createElement('div');
+            row.className = 'bg-slate-900/40 border border-slate-800/80 p-2.5 rounded-lg text-xs space-y-2';
+
+            const headerInfo = document.createElement('div');
+            headerInfo.className = 'flex justify-between items-center text-[11px] font-medium text-slate-300';
+            
+            let metaLabel = '';
+            if (col.isFullyNumeric) {
+                metaLabel = `[${col.min} a ${col.max}]`;
+            } else if (col.uniqueValues.length === 2) {
+                metaLabel = '[Binario]';
+            } else {
+                metaLabel = `[${col.uniqueValues.length} cat]`;
+            }
+
+            headerInfo.innerHTML = `<span class="font-semibold truncate max-w-[140px]" title="${col.name}">${col.name}</span> <span class="font-mono text-slate-500">${metaLabel}</span>`;
+            row.appendChild(headerInfo);
+
+            const controlsGrid = document.createElement('div');
+            controlsGrid.className = 'grid grid-cols-2 gap-2';
+
+            const selectRole = document.createElement('select');
+            selectRole.className = 'w-full bg-slate-950 border border-slate-800 rounded p-1 text-[11px] text-slate-300 focus:outline-none';
+            selectRole.innerHTML = `
+                <option value="ignore">Ignorar</option>
+                <option value="input">Entrada</option>
+                <option value="output">Salida</option>
+            `;
+            controlsGrid.appendChild(selectRole);
+
+            const contextualContainer = document.createElement('div');
+            
+            if (col.isFullyNumeric) {
+                const selectNorm = document.createElement('select');
+                selectNorm.className = 'w-full bg-slate-950 border border-slate-800 rounded p-1 text-[11px] text-slate-300 focus:outline-none';
+                selectNorm.innerHTML = `
+                    <option value="minmax_0_1">Norm [0, 1]</option>
+                    <option value="minmax_1_1">Norm [-1, 1]</option>
+                    <option value="none">Crudo (None)</option>
+                `;
+                contextualContainer.appendChild(selectNorm);
+            } else if (col.uniqueValues.length === 2) {
+                const binaryGrid = document.createElement('div');
+                binaryGrid.className = 'grid grid-cols-2 gap-1 text-[10px] text-slate-400 items-center';
+                
+                binaryGrid.innerHTML = `
+                    <div class="flex items-center space-x-0.5"><span>0:</span><span class="text-indigo-400 font-bold truncate max-w-[40px]" title="${col.uniqueValues[0]}">${col.uniqueValues[0]}</span></div>
+                    <div class="flex items-center space-x-0.5"><span>1:</span><span class="text-emerald-400 font-bold truncate max-w-[40px]" title="${col.uniqueValues[1]}">${col.uniqueValues[1]}</span></div>
+                `;
+                contextualContainer.appendChild(binaryGrid);
+            } else {
+                const badge = document.createElement('div');
+                badge.className = 'text-[10px] text-center bg-indigo-950/40 border border-indigo-900/60 text-indigo-300 rounded py-0.5 font-medium';
+                badge.innerText = 'One-Hot Encod';
+                contextualContainer.appendChild(badge);
+            }
+
+            controlsGrid.appendChild(contextualContainer);
+            row.appendChild(controlsGrid);
+
+            col.domRoleSelect = selectRole;
+            col.domContextualElement = contextualContainer.firstElementChild;
+
+            this.dom.columnsListContainer.appendChild(row);
+        });
+    }
+
+    /**
+     * Recolecta el mapeo del usuario, cuenta las entradas/salidas finales y reconfigura la red en caliente
+     */
+    compileSelectedArchitecture() {
+        let inputCount = 0;
+        let outputCount = 0;
+        const mappingResults = {};
+
+        Object.entries(this.datasetDiagnostics).forEach(([header, col]) => {
+            const role = col.domRoleSelect.value;
+            if (role === 'ignore') return;
+
+            let weightIncrement = 1;
+            if (!col.isFullyNumeric && col.uniqueValues.length > 2) {
+                weightIncrement = col.uniqueValues.length;
+            }
+
+            if (role === 'input') inputCount += weightIncrement;
+            if (role === 'output') outputCount += weightIncrement;
+            
+            mappingResults[header] = {
+                role: role,
+                isNumeric: col.isFullyNumeric,
+                binary: col.uniqueValues.length === 2
+            };
+        });
+
+        if (inputCount === 0 || outputCount === 0) {
+            alert('Configuración inválida: Debes asignar al menos una columna de Entrada y una de Salida.');
+            return;
+        }
+
+
+        this.network.buildArchitecture(inputCount, [4], outputCount);
+        this.renderer.render(this.network);
+        this.closeInspector();
     }
 }

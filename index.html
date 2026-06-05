@@ -61,20 +61,29 @@
         <section id="panel-left" class="w-80 bg-slate-800/40 border border-slate-800 rounded-xl p-4 flex flex-col space-y-5 overflow-y-auto backdrop-blur-sm panel-transition shrink-0">
             
             <div>
-                <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">1. Datos de Entrada</h2>
-                <div id="csv-dropzone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-900/50 rounded-xl p-4 text-center cursor-pointer transition-colors group">
-                    <span class="text-2xl group-hover:animate-bounce inline-block mb-1">📊</span>
-                    <p class="text-xs text-slate-300 font-medium">Arrastra tu archivo .csv</p>
-                    <p class="text-[10px] text-slate-500 mt-1">O haz clic para buscarlo</p>
-                    <input type="file" id="csv-file-input" class="hidden" accept=".csv">
+                <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">1. Carga de Datos (.CSV)</h2>
+                
+                <div id="csv-dropzone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/80 bg-slate-900/30 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all group">
+                    <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📄</span>
+                    <p class="text-xs text-slate-400 font-medium">Arrastra tu CSV o <span class="text-indigo-400 group-hover:underline">explora</span></p>
+                    <input type="file" id="csv-file-input" accept=".csv" class="hidden">
                 </div>
-                <div id="csv-mapping-container" class="mt-3 hidden bg-slate-900/40 border border-slate-700/50 rounded-lg p-2 text-xs">
-                    <p class="font-semibold text-slate-400 mb-1">Mapeo de Columnas:</p>
-                    <div id="csv-columns-list" class="space-y-1"></div>
+
+                <div id="csv-mapping-area" class="hidden space-y-3">
+                    <div class="flex justify-between items-center bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                        <span id="csv-file-name" class="text-xs font-mono text-emerald-400 truncate max-w-[180px]">dataset.csv</span>
+                        <button id="btn-reset-csv" class="text-[10px] text-slate-500 hover:text-rose-400 font-medium">Cambiar</button>
+                    </div>
+                    
+                    <div id="csv-columns-list" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
+
+                    <button id="btn-confirm-mapping" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold p-2 rounded-lg text-xs transition-colors shadow-lg shadow-indigo-600/10">
+                        Confirmar y Construir Red
+                    </button>
                 </div>
             </div>
 
-            <hr class="border-slate-800">
+            <hr class="border-slate-800/80">
 
             <div>
                 <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">2. Configuración Global</h2>
