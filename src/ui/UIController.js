@@ -2,6 +2,7 @@ import { CollisionDetector } from './CollisionDetector.js';
 import { activationRegistry } from '../activation_methods/registry.js';
 import { connectionRegistry } from '../connection_methods/registry.js';
 import { lossRegistry } from '../loss_methods/registry.js';
+import { initializationRegistry } from '../initialization_methods/registry.js';
 
 export class UIController {
     /**
@@ -25,6 +26,7 @@ export class UIController {
             sliderLr: document.getElementById('param-lr'),
             valLr: document.getElementById('val-lr'),
             selectLossType: document.getElementById('param-loss-type'),
+            selectInitType: document.getElementById('param-init-type'),
             inspectorEmpty: document.getElementById('inspector-empty-state'),
             inspectorContent: document.getElementById('inspector-content'),
             inspectType: document.getElementById('inspect-type'),
@@ -41,6 +43,7 @@ export class UIController {
         };
 
         this.populateLossSelect();
+        this.populateInitializationSelect();
         this.initEventListeners();
         this.syncMetrics();
     }
@@ -73,6 +76,13 @@ export class UIController {
             this.network.learningRate = val;
         });
 
+        this.dom.selectInitType.addEventListener('change', (e) => {
+            this.network.initializationStrategyId = e.target.value;
+            this.network.applyWeightInitialization();
+            this.renderer.render(this.network);
+            this.updateInspectorValues();
+        });
+
         this.dom.btnToggleLeft.addEventListener('click', () => this.togglePanel('left'));
         this.dom.btnToggleRight.addEventListener('click', () => this.togglePanel('right'));
 
@@ -102,6 +112,26 @@ export class UIController {
                 option.selected = true;
             }
             this.dom.selectLossType.appendChild(option);
+        });
+    }
+
+    /**
+     * Llena dinámicamente las opciones del selector de inicialización leyendo su registro central
+     */
+    populateInitializationSelect() {
+        if (!this.dom.selectInitType) return;
+        this.dom.selectInitType.innerHTML = '';
+
+        Object.values(initializationRegistry).forEach(strategy => {
+            const option = document.createElement('option');
+            option.value = strategy.id;
+            option.innerText = strategy.name;
+            option.title = strategy.description; // Muestra la descripción al pasar el cursor
+            
+            if (this.network.initializationStrategyId === strategy.id) {
+                option.selected = true;
+            }
+            this.dom.selectInitType.appendChild(option);
         });
     }
 
