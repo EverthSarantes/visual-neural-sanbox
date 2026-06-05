@@ -135,8 +135,16 @@ export class CanvasRenderer {
                         this.ctx.strokeStyle = '#f59e0b';
                     }
 
+                    if (connection.isDropped) {
+                        this.ctx.strokeStyle = 'rgba(51, 65, 85, 0.15)';
+                        this.ctx.setLineDash([4, 4]);
+                    } else {
+                        this.ctx.setLineDash([]);
+                    }
+
                     this.ctx.stroke();
                 });
+                this.ctx.setLineDash([]);
             });
         });
     }
@@ -152,7 +160,11 @@ export class CanvasRenderer {
                 this.ctx.beginPath();
                 this.ctx.arc(neuron.x, neuron.y, this.neuronRadius, 0, 2 * Math.PI);
                 
-                this.ctx.fillStyle = `rgba(16, 185, 129, ${Math.min(Math.max(neuron.value, 0), 1)})`;
+                if (neuron.isDropped) {
+                    this.ctx.fillStyle = 'rgba(30, 41, 59, 0.2)';
+                } else {
+                    this.ctx.fillStyle = `rgba(16, 185, 129, ${Math.min(Math.max(neuron.value, 0), 1)})`;
+                }
                 this.ctx.fill();
 
                 this.ctx.lineWidth = 2;
