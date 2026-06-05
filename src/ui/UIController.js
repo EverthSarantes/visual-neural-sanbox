@@ -703,9 +703,8 @@ export class UIController {
     compileSelectedArchitecture() {
         let inputCount = 0;
         let outputCount = 0;
-        const mappingResults = {};
 
-        Object.entries(this.datasetDiagnostics).forEach(([header, col]) => {
+        Object.values(this.datasetDiagnostics).forEach(col => {
             const role = col.domRoleSelect.value;
             if (role === 'ignore') return;
 
@@ -716,12 +715,6 @@ export class UIController {
 
             if (role === 'input') inputCount += weightIncrement;
             if (role === 'output') outputCount += weightIncrement;
-            
-            mappingResults[header] = {
-                role: role,
-                isNumeric: col.isFullyNumeric,
-                binary: col.uniqueValues.length === 2
-            };
         });
 
         if (inputCount === 0 || outputCount === 0) {
@@ -729,9 +722,10 @@ export class UIController {
             return;
         }
 
-
         this.network.buildArchitecture(inputCount, [4], outputCount);
         this.renderer.render(this.network);
         this.closeInspector();
+
+        this.trainingData = this.csvParser.compileDataset(this.datasetDiagnostics);
     }
 }

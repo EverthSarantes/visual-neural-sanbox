@@ -90,4 +90,79 @@ export class CsvParser {
 
         return report;
     }
+
+    /**
+     * Transforma todo el CSV en un array de tensores/arrays nativos normalizados
+     * según la configuración manual recolectada de la UI.
+     * @param {Object} diagnostics - El objeto con los selectores del DOM incrustados
+     * @returns {Array<Object>} Dataset listo para entrenamiento: [{ inputs: [], targets: [] }]
+     */
+    compileDataset(diagnostics) {
+        const separator = this.rawLines[0].includes(';') ? ';' : ',';
+        const compiledData = [];
+
+        for (let i = 1; i < this.rawLines.length; i++) {
+            const cells = this.rawLines[i].split(separator).map(c => c.trim().replace(/^["']|["']$/g, ''));
+
+            if (cells.length !== this.headers.length) continue;
+
+            const rowInputs = [];
+            const rowTargets = [];
+
+            this.headers.forEach((header, colIdx) => {
+                const cellValue = cells[colIdx];
+                const col = diagnostics[header];
+                
+                const role = col.domRoleSelect.value;
+                if (role === 'ignore') return;
+
+                let processedValues = [];
+
+                //LA COLUMNA ES NUMÉRICA
+                if (col.isFullyNumeric) {
+                    const num = parseFloat(cellValue);
+                    const normType = col.domContextualElement.value; 
+                    
+                    const range = col.max - col.min;
+                    if (range === 0) {
+                        processedValues.push(0);
+                    } else if (normType === 'minmax_0_1') {
+                        processedValues.push((num - col.min) / range);
+                    } else if (normType === 'minmax_1_1') {
+                        processedValues.push(2 * ((num - col.min) / range) - 1);
+                    } else {
+                        processedValues.push(num);
+                    }
+                } 
+                // LA COLUMNA ES BINARIA
+                else if (col.uniqueValues.length === 2) {
+
+                    const numericRepresentation = (cellValue === col.uniqueValues[0]) ? 0 : 1;
+                    processedValues.push(numericRepresentation);
+                } 
+                // LA COLUMNA ES CATEGÓRICA MULTICLASE
+                else {
+                    const oneHotVector = new Array(col.uniqueValues.length).fill(0);
+                    const categoryIdx = col.uniqueValues.indexOf(cellValue);
+                    if (categoryIdx !== -1) {
+                        oneHotVector[categoryIdx] = 1;
+                    }
+                    processedValues = oneHotVector;
+                }
+
+                if (role === 'input') {
+                    rowInputs.push(...processedValues);
+                } else if (role === 'output') {
+                    rowTargets.push(...processedValues);
+                }
+            });
+
+            compiledData.push({
+                inputs: rowInputs,
+                targets: rowTargets
+            });
+        }
+
+        return compiledData;
+    }
 }
