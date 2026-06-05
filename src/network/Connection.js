@@ -9,7 +9,8 @@ export class Connection {
         this.from = fromNeuron;
         this.to = toNeuron;
         
-        // El peso inicial aleatorio servirá para que el Canvas pinte líneas de grosores variados desde el inicio
-        this.weight = Math.random() * 2 - 1; // Entre -1 y 1
+        this.weight = 0;
+        this.velocity = 0;
+        this.isDropped = false;
     }
 }

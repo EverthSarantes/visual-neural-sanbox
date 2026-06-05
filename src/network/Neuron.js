@@ -9,13 +9,16 @@ export class Neuron {
         this.id = id;
         this.activationId = activationId; //
         
-        this.bias = Math.random() * 2 - 1;
+        this.bias = 0;
         this.value = 0;                    // Inicializado en 0 antes del forward pass
         this.netInput = 0;                 // Almacena la suma neta
         this.errorSignal = 0;              // Almacena el gradiente local durante el backprop
         
         this.inputs = [];  
-        this.outputs = []; 
+        this.outputs = [];
+
+        this.biasVelocity = 0;
+        this.isDropped = false;
 
         // Coordenadas para el CanvasRenderer
         this.x = 0;
