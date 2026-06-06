@@ -4,6 +4,7 @@ import { connectionRegistry } from '../connection_methods/registry.js';
 import { lossRegistry } from '../loss_methods/registry.js';
 import { initializationRegistry } from '../initialization_methods/registry.js';
 import { CsvParser } from '../utils/CsvParser.js';
+import { TrainingEngine } from '../training/Engine.js';
 
 export class UIController {
     /**
@@ -24,6 +25,11 @@ export class UIController {
             panelRight: document.getElementById('panel-right'),
             btnToggleLeft: document.getElementById('btn-toggle-left'),
             btnToggleRight: document.getElementById('btn-toggle-right'),
+
+            btnPlay: document.getElementById('btn-play'),
+            btnPause: document.getElementById('btn-pause'),
+            btnStep: document.getElementById('btn-step'),
+            btnReset: document.getElementById('btn-reset'),
 
             dropzone: document.getElementById('csv-dropzone'),
             fileInput: document.getElementById('csv-file-input'),
@@ -60,10 +66,17 @@ export class UIController {
             lblEpoch: document.getElementById('lbl-epoch-counter')
         };
 
+        this.engine = new TrainingEngine(
+            this.network,
+            (epoch, loss, accuracy) => this.handleEpochComplete(epoch, loss, accuracy), // Al acabar época
+            () => this.renderer.render(this.network) // Al avanzar la animación visual
+        );
+
         this.populateLossSelect();
         this.populateInitializationSelect();
         this.initEventListeners();
         this.initCsvListeners();
+        this.initPlaybackListeners();
         this.syncMetrics();
     }
 
@@ -180,6 +193,77 @@ export class UIController {
         this.dom.btnConfirmMapping.addEventListener('click', () => {
             this.compileSelectedArchitecture();
         });
+    }
+
+    /**
+     * Conecta los botones físicos de reproducción con los métodos del motor asíncrono
+     */
+    initPlaybackListeners() {
+        if (!this.dom.btnPlay) return;
+
+        // Botón  PLAY
+        this.dom.btnPlay.addEventListener('click', () => {
+            if (!this.trainSet || this.trainSet.length === 0) {
+                alert('Primero debes cargar un archivo CSV y confirmar el mapeo estructural.');
+                return;
+            }
+            this.engine.start();
+            this.updatePlaybackButtonsUI();
+        });
+
+        // Botón  PAUSE
+        this.dom.btnPause.addEventListener('click', () => {
+            this.engine.pause();
+            this.updatePlaybackButtonsUI();
+        });
+
+        // Botón STEP (Paso a paso, época por época)
+        this.dom.btnStep.addEventListener('click', () => {
+            if (!this.trainSet || this.trainSet.length === 0) return;
+            this.engine.step();
+        });
+
+        // Botón RESET (Reiniciar pesos y épocas)
+        this.dom.btnReset.addEventListener('click', () => {
+            this.engine.pause();
+            this.network.resetTrainingState();
+            
+            // Refrescar el lienzo físico y los textos de analíticas
+            this.renderer.render(this.network);
+            this.syncMetrics();
+            this.updatePlaybackButtonsUI();
+            this.updateInspectorValues();
+        });
+    }
+
+    /**
+     * Captura las analíticas de fin de época emitidas por el motor y refresca los textos de la UI
+     */
+    handleEpochComplete(epoch, loss, accuracy) {
+        if (this.dom.lblEpoch) this.dom.lblEpoch.innerText = epoch;
+        if (this.dom.lblLoss) this.dom.lblLoss.innerText = loss.toFixed(5);
+        if (this.dom.lblAccuracy) this.dom.lblAccuracy.innerText = `${accuracy.toFixed(2)}%`;
+        
+        this.updateInspectorValues();
+    }
+
+    /**
+     * Altera visualmente los estados de los botones (estilo activo/inactivo) usando Tailwind
+     */
+    updatePlaybackButtonsUI() {
+        if (this.network.isTraining) {
+            this.dom.btnPlay.classList.add('bg-indigo-950', 'text-indigo-500', 'border-indigo-800/40');
+            this.dom.btnPlay.classList.remove('bg-slate-900', 'text-slate-400');
+            
+            this.dom.btnPause.classList.remove('bg-indigo-950', 'text-indigo-500', 'border-indigo-800/40');
+            this.dom.btnPause.classList.add('bg-slate-900', 'text-slate-400');
+        } else {
+            this.dom.btnPlay.classList.remove('bg-indigo-950', 'text-indigo-500', 'border-indigo-800/40');
+            this.dom.btnPlay.classList.add('bg-slate-900', 'text-slate-400');
+            
+            this.dom.btnPause.classList.add('bg-indigo-950', 'text-indigo-500', 'border-indigo-800/40');
+            this.dom.btnPause.classList.remove('bg-slate-900', 'text-slate-400');
+        }
     }
 
     /**
@@ -746,5 +830,10 @@ export class UIController {
 
         this.trainSet = fullDataset.slice(0, cutoff);
         this.testSet = fullDataset.slice(cutoff);
+
+        this.engine.setDatasets(this.trainSet, this.testSet);
+
+        this.syncMetrics();
+        this.updatePlaybackButtonsUI();
     }
 }
