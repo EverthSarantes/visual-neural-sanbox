@@ -5,6 +5,7 @@ import { lossRegistry } from '../loss_methods/registry.js';
 import { initializationRegistry } from '../initialization_methods/registry.js';
 import { CsvParser } from '../utils/CsvParser.js';
 import { TrainingEngine } from '../training/Engine.js';
+import { MetricsChart } from './MetricsChart.js';
 
 export class UIController {
     /**
@@ -71,6 +72,8 @@ export class UIController {
             (epoch, loss, accuracy) => this.handleEpochComplete(epoch, loss, accuracy), // Al acabar época
             () => this.renderer.render(this.network) // Al avanzar la animación visual
         );
+
+        this.metricsChart = new MetricsChart();
 
         this.populateLossSelect();
         this.populateInitializationSelect();
@@ -227,7 +230,7 @@ export class UIController {
         this.dom.btnReset.addEventListener('click', () => {
             this.engine.pause();
             this.network.resetTrainingState();
-            
+            this.metricsChart.clear();
             // Refrescar el lienzo físico y los textos de analíticas
             this.renderer.render(this.network);
             this.syncMetrics();
@@ -245,6 +248,7 @@ export class UIController {
         if (this.dom.lblAccuracy) this.dom.lblAccuracy.innerText = `${accuracy.toFixed(2)}%`;
         
         this.updateInspectorValues();
+        this.metricsChart.pushMetrics(epoch, loss, accuracy);
     }
 
     /**
