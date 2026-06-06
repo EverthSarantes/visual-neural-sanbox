@@ -454,20 +454,29 @@ export class UIController {
             container.appendChild(selectConn);
         }
 
-        // Información de Neuronas y Botón de Añadir
+        // Información de Neuronas
         const labelNeurons = document.createElement('p');
         labelNeurons.className = 'text-slate-400 mb-1 text-xs';
         labelNeurons.innerText = `Neuronas Actuales: ${layer.neurons.length}`;
         container.appendChild(labelNeurons);
 
-        const btnAddN = document.createElement('button');
-        btnAddN.className = 'w-full bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg text-xs font-semibold transition-colors mb-4';
-        btnAddN.innerText = '➕ Añadir Neurona a la Capa';
-        btnAddN.onclick = () => {
-            this.network.addNeuronToLayer(layer.id);
-            this.openInspector('layer', layer);
-        };
-        container.appendChild(btnAddN);
+        if (layer.type === 'hidden') {
+            const btnAddN = document.createElement('button');
+            btnAddN.className = 'w-full bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg text-xs font-semibold transition-colors mb-4';
+            btnAddN.innerText = '➕ Añadir Neurona a la Capa';
+            btnAddN.onclick = () => {
+                this.network.addNeuronToLayer(layer.id);
+                this.openInspector('layer', layer);
+            };
+            container.appendChild(btnAddN);
+        } else {
+            const notice = document.createElement('div');
+            notice.className = 'text-[11px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 p-2.5 rounded-lg leading-relaxed mb-4';
+            notice.innerHTML = layer.type === 'input'
+                ? `ℹ️ El tamaño de la capa de <b>Entrada</b> depende de las columnas de entrada de datos.`
+                : `ℹ️ El tamaño de la capa de <b>Salida</b> depende de las columnas de salida de datos.`;
+            container.appendChild(notice);
+        }
 
         const idx = this.network.layers.findIndex(l => l.id === layer.id);
 
