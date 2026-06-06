@@ -32,6 +32,8 @@ export class UIController {
             btnResetCsv: document.getElementById('btn-reset-csv'),
             columnsListContainer: document.getElementById('csv-columns-list'),
             btnConfirmMapping: document.getElementById('btn-confirm-mapping'),
+            sliderSplit: document.getElementById('param-split'),
+            valSplit: document.getElementById('val-split'),
 
             sliderLr: document.getElementById('param-lr'),
             valLr: document.getElementById('val-lr'),
@@ -167,6 +169,12 @@ export class UIController {
             this.dom.mappingArea.classList.add('hidden');
             this.dom.dropzone.classList.remove('hidden');
             this.datasetDiagnostics = null;
+        });
+
+        this.dom.sliderSplit.addEventListener('input', (e) => {
+            const trainPercent = parseInt(e.target.value, 10);
+            const testPercent = 100 - trainPercent;
+            this.dom.valSplit.innerText = `${trainPercent}% / ${testPercent}%`;
         });
 
         this.dom.btnConfirmMapping.addEventListener('click', () => {
@@ -726,6 +734,17 @@ export class UIController {
         this.renderer.render(this.network);
         this.closeInspector();
 
-        this.trainingData = this.csvParser.compileDataset(this.datasetDiagnostics);
+        const fullDataset = this.csvParser.compileDataset(this.datasetDiagnostics);
+
+        for (let i = fullDataset.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [fullDataset[i], fullDataset[j]] = [fullDataset[j], fullDataset[i]];
+        }
+
+        const trainPercent = parseInt(this.dom.sliderSplit.value, 10) / 100;
+        const cutoff = Math.floor(fullDataset.length * trainPercent);
+
+        this.trainSet = fullDataset.slice(0, cutoff);
+        this.testSet = fullDataset.slice(cutoff);
     }
 }

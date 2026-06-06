@@ -77,6 +77,14 @@
                     
                     <div id="csv-columns-list" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
 
+                    <div class="bg-slate-900/40 border border-slate-800 p-2.5 rounded-lg space-y-1">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">División de Datos (Train / Test)</span>
+                            <span id="val-split" class="text-indigo-400 font-mono font-bold">80% / 20%</span>
+                        </div>
+                        <input type="range" id="param-split" min="50" max="95" step="5" value="80" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    </div>
+
                     <button id="btn-confirm-mapping" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold p-2 rounded-lg text-xs transition-colors shadow-lg shadow-indigo-600/10">
                         Confirmar y Construir Red
                     </button>
