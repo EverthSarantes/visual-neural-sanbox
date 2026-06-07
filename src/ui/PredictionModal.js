@@ -49,7 +49,7 @@ export class PredictionModal {
         
         const allColumns = Object.values(this.ui.datasetDiagnostics);
         
-        const inputColumns = allColumns.filter(col => col.domRoleSelect && col.domRoleSelect.value === 'input');
+        const inputColumns = allColumns.filter(col => col.role === 'input');
 
         inputColumns.forEach(col => {
             const group = document.createElement('div');
@@ -108,7 +108,7 @@ export class PredictionModal {
                 }
 
                 const range = col.max - col.min;
-                const normType = col.domContextualElement.value;
+                const normType = col.normalization;
 
                 if (range === 0) {
                     finalInputVector.push(0);
@@ -153,7 +153,7 @@ export class PredictionModal {
         this.dom.outputsContainer.innerHTML = '';
         
         const allColumns = Object.values(this.ui.datasetDiagnostics);
-        const targetCol = allColumns.find(col => col.domRoleSelect && col.domRoleSelect.value === 'output');
+        const targetCol = allColumns.find(col => col.role === 'output');
 
         let classNames = [];
         if (targetCol) {

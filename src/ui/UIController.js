@@ -827,6 +827,14 @@ export class UIController {
                 <option value="input">Entrada</option>
                 <option value="output">Salida</option>
             `;
+            
+            col.role = col.role || 'ignore';
+            selectRole.value = col.role;
+            
+            selectRole.addEventListener('change', (e) => {
+                col.role = e.target.value;
+            });
+            
             controlsGrid.appendChild(selectRole);
 
             const contextualContainer = document.createElement('div');
@@ -839,6 +847,14 @@ export class UIController {
                     <option value="minmax_1_1">Norm [-1, 1]</option>
                     <option value="none">Crudo (None)</option>
                 `;
+                
+                col.normalization = col.normalization || 'minmax_0_1';
+                selectNorm.value = col.normalization;
+                
+                selectNorm.addEventListener('change', (e) => {
+                    col.normalization = e.target.value;
+                });
+                
                 contextualContainer.appendChild(selectNorm);
             } else if (col.uniqueValues.length === 2) {
                 const binaryGrid = document.createElement('div');
@@ -859,9 +875,6 @@ export class UIController {
             controlsGrid.appendChild(contextualContainer);
             row.appendChild(controlsGrid);
 
-            col.domRoleSelect = selectRole;
-            col.domContextualElement = contextualContainer.firstElementChild;
-
             this.dom.columnsListContainer.appendChild(row);
         });
     }
@@ -874,7 +887,7 @@ export class UIController {
         let outputCount = 0;
 
         Object.values(this.datasetDiagnostics).forEach(col => {
-            const role = col.domRoleSelect.value;
+            const role = col.role;
             if (role === 'ignore') return;
 
             let weightIncrement = 1;

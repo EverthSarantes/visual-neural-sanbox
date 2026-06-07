@@ -113,7 +113,7 @@ export class CsvParser {
                 const cellValue = cells[colIdx];
                 const col = diagnostics[header];
                 
-                const role = col.domRoleSelect.value;
+                const role = col.role;
                 if (role === 'ignore') return;
 
                 let processedValues = [];
@@ -121,7 +121,7 @@ export class CsvParser {
                 //LA COLUMNA ES NUMÉRICA
                 if (col.isFullyNumeric) {
                     const num = parseFloat(cellValue);
-                    const normType = col.domContextualElement.value; 
+                    const normType = col.normalization;
                     
                     const range = col.max - col.min;
                     if (range === 0) {

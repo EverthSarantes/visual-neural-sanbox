@@ -6,23 +6,6 @@ import { Connection } from '../network/Connection.js';
  * Exporta el estado absoluto de la red, configuraciones y datasets a un archivo JSON.
  */
 export function exportModel(network, uiController, version = "1.0.0") {
-    const cleanDiagnostics = {};
-    if (uiController.datasetDiagnostics) {
-        for (const [key, col] of Object.entries(uiController.datasetDiagnostics)) {
-            cleanDiagnostics[key] = {
-                name: col.name,
-                totalRows: col.totalRows,
-                isFullyNumeric: col.isFullyNumeric,
-                min: col.min,
-                max: col.max,
-                uniqueValues: col.uniqueValues,
-                sampleRows: col.sampleRows,
-                role: col.domRoleSelect ? col.domRoleSelect.value : col.role,
-                normalization: col.domContextualElement ? col.domContextualElement.value : col.normalization
-            };
-        }
-    }
-
     const modelState = {
         version: version,
         timestamp: new Date().toISOString(),
@@ -38,7 +21,7 @@ export function exportModel(network, uiController, version = "1.0.0") {
             epoch: network.epoch,
             currentLoss: network.currentLoss,
             currentAccuracy: network.currentAccuracy,
-            datasetDiagnostics: cleanDiagnostics,
+            datasetDiagnostics: uiController.datasetDiagnostics,
         },
 
         datasets: {
