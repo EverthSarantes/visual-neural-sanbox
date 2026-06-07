@@ -6,7 +6,7 @@ import { initializationRegistry } from '../initialization_methods/registry.js';
 import { CsvParser } from '../utils/CsvParser.js';
 import { TrainingEngine } from '../training/Engine.js';
 import { MetricsChart } from './MetricsChart.js';
-import { exportModel } from '../utils/Persistence.js';
+import { exportModel, importModel } from '../utils/Persistence.js';
 import { PredictionModal } from './PredictionModal.js';
 
 export class UIController {
@@ -24,6 +24,7 @@ export class UIController {
         // Cachear elementos críticos del DOM
         this.dom = {
             btnSave: document.getElementById('btn-save'),
+            btnLoad: document.getElementById('btn-load'),
             btnOpenPredictModal: document.getElementById('btn-open-predict-modal'),
 
             canvas: document.getElementById('neural-canvas'),
@@ -97,6 +98,10 @@ export class UIController {
             exportModel(this.network, this);
         });
 
+        this.dom.btnLoad.addEventListener('click', () => {
+            this.initModel();
+        });
+
         this.dom.btnOpenPredictModal.addEventListener('click', () => {
             this.predictionModal.open();
         });
@@ -163,6 +168,51 @@ export class UIController {
         window.addEventListener('resize', () => {
             this.renderer.resize();
             this.renderer.render(this.network);
+        });
+    }
+
+    /**
+     * Sincroniza todos los controles deslizantes (sliders),
+     * selectores desplegables (selects) y etiquetas numéricas de la UI con el estado real de la red.
+     */
+    syncSlidersAndSelects() {
+        if (!this.network) return;
+
+        // MAPEO DE SLIDERS Y SUS ETIQUETAS DE TEXTO ASOCIADAS
+        const sliderMap = {
+            'slider-learning-rate': [this.network.learningRate, this.dom.sliderLr, this.dom.valLr],
+            'slider-momentum': [this.network.momentum, this.dom.sliderMomentum, this.dom.valMomentum],
+            'slider-dropout': [this.network.dropoutRate, this.dom.sliderDropout, this.dom.valDropout],
+            'slider-weight-decay': [this.network.weightDecay, this.dom.sliderDecay, this.dom.valDecay]
+        };
+
+        Object.entries(sliderMap).forEach(([controlId, [value, element, elementVal]]) => {
+            const slider = element;
+            if (slider) {
+                slider.value = value;
+                slider.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                const label = elementVal;
+                if (label) {
+                    label.innerText = value < 0.001 ? value.toFixed(5) : value;
+                }
+            }
+        });
+
+        // MAPEO DE SELECTORES DESPLEGABLES (SELECT)
+        const selectMap = {
+            'select-batch-size': [this.network.batchSize, this.dom.selectBatchSize],
+            'select-loss-type': [this.network.lossTypeId, this.dom.selectLossType],
+            'select-initialization': [this.network.initializationStrategyId, this.dom.selectInitType]
+        };
+
+        Object.entries(selectMap).forEach(([controlId, [value, element]]) => {
+            const selectElement = element;
+            if (selectElement) {
+                selectElement.value = value;
+                
+                selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         });
     }
 
@@ -862,5 +912,45 @@ export class UIController {
 
         this.syncMetrics();
         this.updatePlaybackButtonsUI();
+    }
+
+    initModel() {
+        if(!confirm('Esto eliminará la configuración actual. ¿Deseas continuar?')) return;
+
+        const fileInput = document.createElement('input');
+        fileInput.id = 'hidden-file-input';
+        fileInput.type = 'file';
+        fileInput.accept = '.json';
+        fileInput.className = 'hidden';
+        fileInput.click();
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    
+                    const success = importModel(jsonData, this.network, this, this.renderer);
+                    
+                } catch (err) {
+                    alert("El archivo seleccionado no contiene un formato JSON válido.");
+                }
+                finally {
+                    fileInput.remove();
+                }
+            };
+
+            reader.onerror = () => {
+                alert("Error físico de lectura al intentar procesar el archivo.");
+                fileInput.remove();
+            };
+
+            reader.readAsText(file);
+            fileInput.remove();
+        });
     }
 }
