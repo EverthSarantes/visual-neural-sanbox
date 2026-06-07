@@ -16,26 +16,25 @@ export function backwardPass(network, targetVector) {
     const lossMethod = getLossMethod(network.lossTypeId);
     const outputActivationMethod = getActivation(outputLayer.activationId);
 
-    outputLayer.neurons.forEach((neuron, idx) => {
-        if (neuron.isDropped) {
-            neuron.errorSignal = 0;
-            return;
-        }
-
-        const lossTerm = lossMethod.errorSignalTerm(neuron.value, targetVector[idx] || 0);
-
-        neuron.errorSignal = lossTerm * outputActivationMethod.derivative(neuron.netInput);
-    });
+    if (outputActivationMethod.derivativeLayer) {
+        outputActivationMethod.derivativeLayer(outputLayer, targetVector, lossMethod);
+    } else {
+        outputLayer.neurons.forEach((neuron, idx) => {
+            if (neuron.isDropped) {
+                neuron.errorSignal = 0;
+                return;
+            }
+            const lossTerm = lossMethod.errorSignalTerm(neuron.value, targetVector[idx] || 0);
+            neuron.errorSignal = lossTerm * outputActivationMethod.derivative(neuron.netInput);
+        });
+    }
 
     for (let i = totalLayers - 2; i > 0; i--) {
         const layer = network.layers[i];
         const activationMethod = getActivation(layer.activationId);
 
-        layer.neurons.forEach(neuron => {
-            if (neuron.isDropped) {
-                neuron.errorSignal = 0;
-                return;
-            }
+        const errorSums = layer.neurons.map(neuron => {
+            if (neuron.isDropped) return 0;
 
             let errorSum = 0;
             neuron.outputs.forEach(connection => {
@@ -43,8 +42,19 @@ export function backwardPass(network, targetVector) {
                     errorSum += connection.to.errorSignal * connection.weight;
                 }
             });
-
-            neuron.errorSignal = errorSum * activationMethod.derivative(neuron.netInput);
+            return errorSum;
         });
+
+        if (activationMethod.derivativeLayerHidden) {
+            activationMethod.derivativeLayerHidden(layer, errorSums);
+        } else {
+            layer.neurons.forEach((neuron, idx) => {
+                if (neuron.isDropped) {
+                    neuron.errorSignal = 0;
+                    return;
+                }
+                neuron.errorSignal = errorSums[idx] * activationMethod.derivative(neuron.netInput);
+            });
+        }
     }
 }

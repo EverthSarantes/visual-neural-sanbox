@@ -43,7 +43,6 @@ export function forwardPass(network, inputVector) {
                 return;
             }
 
-            // Ecuación de la Entrada Neta: netInput = Suma(X_i * W_i) + b
             let sum = 0;
             neuron.inputs.forEach(connection => {
                 if (!connection.from.isDropped && !connection.isDropped) {
@@ -52,17 +51,23 @@ export function forwardPass(network, inputVector) {
             });
 
             neuron.netInput = sum + neuron.bias;
-
-            let activationValue = activationMethod.calculate(neuron.netInput);
-
-            // Ajuste de Inverted Dropout:
-            // Escalamos las neuronas ocultas sobrevivientes para compensar
-            if (network.isTraining && network.dropoutRate > 0 && layer.type === 'hidden') {
-                activationValue /= (1 - network.dropoutRate);
-            }
-
-            neuron.value = activationValue;
         });
+
+        if (activationMethod.calculateLayer) {
+            activationMethod.calculateLayer(layer, network);
+        } else {
+            layer.neurons.forEach(neuron => {
+                if (neuron.isDropped) return;
+
+                let activationValue = activationMethod.calculate(neuron.netInput);
+
+                if (network.isTraining && network.dropoutRate > 0 && layer.type === 'hidden') {
+                    activationValue /= (1 - network.dropoutRate);
+                }
+
+                neuron.value = activationValue;
+            });
+        }
     }
 
     // RECOLECTAR RESULTADOS DE SALIDA
