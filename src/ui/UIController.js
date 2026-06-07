@@ -6,6 +6,8 @@ import { initializationRegistry } from '../initialization_methods/registry.js';
 import { CsvParser } from '../utils/CsvParser.js';
 import { TrainingEngine } from '../training/Engine.js';
 import { MetricsChart } from './MetricsChart.js';
+import { exportModel } from '../utils/Persistence.js';
+import { PredictionModal } from './PredictionModal.js';
 
 export class UIController {
     /**
@@ -21,6 +23,9 @@ export class UIController {
 
         // Cachear elementos críticos del DOM
         this.dom = {
+            btnSave: document.getElementById('btn-save'),
+            btnOpenPredictModal: document.getElementById('btn-open-predict-modal'),
+
             canvas: document.getElementById('neural-canvas'),
             panelLeft: document.getElementById('panel-left'),
             panelRight: document.getElementById('panel-right'),
@@ -74,6 +79,7 @@ export class UIController {
         );
 
         this.metricsChart = new MetricsChart();
+        this.predictionModal = new PredictionModal(this.network, this);
 
         this.populateLossSelect();
         this.populateInitializationSelect();
@@ -87,6 +93,14 @@ export class UIController {
      * Vincula todos los listeners de eventos nativos del navegador
      */
     initEventListeners() {
+        this.dom.btnSave.addEventListener('click', () => {
+            exportModel(this.network, this);
+        });
+
+        this.dom.btnOpenPredictModal.addEventListener('click', () => {
+            this.predictionModal.open();
+        });
+
         this.dom.canvas.addEventListener('click', (e) => {
             const rect = this.dom.canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
