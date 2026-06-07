@@ -184,7 +184,6 @@ export function importModel(jsonData, network, uiController, renderer) {
             renderer.render(network);
         }
 
-        console.log(`Sistema rehidratado con éxito! Modelo restaurado en la época ${network.epoch}.`);
         return true;
 
     } catch (error) {
