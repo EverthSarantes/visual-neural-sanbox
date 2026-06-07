@@ -165,28 +165,23 @@ export class PredictionModal {
         const maxIndex = outputs.indexOf(Math.max(...outputs));
 
         outputs.forEach((value, idx) => {
-            const isWinner = (idx === maxIndex);
             const percentage = Math.max(0, Math.min(100, value * 100));
             const name = classNames[idx] || `Clase ${idx}`;
 
             const row = document.createElement('div');
-            row.className = `p-2.5 rounded-lg border transition-all ${
-                isWinner 
-                    ? 'bg-emerald-950/20 border-emerald-500/40 shadow-lg shadow-emerald-500/5' 
-                    : 'bg-slate-950/20 border-slate-800/60'
-            }`;
+            row.className = `p-2.5 rounded-lg border transition-all bg-slate-950/20 border-slate-800/60`;
 
             row.innerHTML = `
                 <div class="flex justify-between text-xs mb-1">
-                    <span class="${isWinner ? 'text-emerald-400 font-bold' : 'text-slate-300'} flex items-center gap-1">
-                        ${isWinner ? '🏆' : '▪️'} ${name}
+                    <span class="text-slate-300 flex items-center gap-1">
+                        ${name}
                     </span>
-                    <span class="font-mono ${isWinner ? 'text-emerald-400 font-bold' : 'text-slate-400'}">
+                    <span class="font-mono text-slate-400">
                         ${value.toFixed(4)} (${percentage.toFixed(1)}%)
                     </span>
                 </div>
                 <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
-                    <div class="h-full transition-all duration-300 ${isWinner ? 'bg-emerald-500' : 'bg-slate-700'}" style="width: ${percentage}%"></div>
+                    <div class="h-full transition-all duration-300 bg-slate-700" style="width: ${percentage}%"></div>
                 </div>
             `;
             this.dom.outputsContainer.appendChild(row);
