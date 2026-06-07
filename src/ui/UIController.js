@@ -157,6 +157,9 @@ export class UIController {
 
         this.dom.selectInitType.addEventListener('change', (e) => {
             this.network.initializationStrategyId = e.target.value;
+
+            if(this.isSyncing) return;
+
             this.network.applyWeightInitialization();
             this.renderer.render(this.network);
             this.updateInspectorValues();
@@ -177,6 +180,8 @@ export class UIController {
      */
     syncSlidersAndSelects() {
         if (!this.network) return;
+
+        this.isSyncing = true;
 
         // MAPEO DE SLIDERS Y SUS ETIQUETAS DE TEXTO ASOCIADAS
         const sliderMap = {
@@ -214,6 +219,8 @@ export class UIController {
                 selectElement.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
+
+        this.isSyncing = false;
     }
 
     /**
