@@ -16,8 +16,14 @@ export function backwardPass(network, targetVector) {
     const lossMethod = getLossMethod(network.lossTypeId);
     const outputActivationMethod = getActivation(outputLayer.activationId);
 
+    const GRAD_LIMIT = 10.0;
+
     if (outputActivationMethod.derivativeLayer) {
         outputActivationMethod.derivativeLayer(outputLayer, targetVector, lossMethod);
+        
+        outputLayer.neurons.forEach(neuron => {
+            neuron.errorSignal = Math.max(Math.min(neuron.errorSignal, GRAD_LIMIT), -GRAD_LIMIT);
+        });
     } else {
         outputLayer.neurons.forEach((neuron, idx) => {
             if (neuron.isDropped) {
@@ -26,6 +32,8 @@ export function backwardPass(network, targetVector) {
             }
             const lossTerm = lossMethod.errorSignalTerm(neuron.value, targetVector[idx] || 0);
             neuron.errorSignal = lossTerm * outputActivationMethod.derivative(neuron.netInput);
+            
+            neuron.errorSignal = Math.max(Math.min(neuron.errorSignal, GRAD_LIMIT), -GRAD_LIMIT);
         });
     }
 
@@ -47,6 +55,10 @@ export function backwardPass(network, targetVector) {
 
         if (activationMethod.derivativeLayerHidden) {
             activationMethod.derivativeLayerHidden(layer, errorSums);
+            
+            layer.neurons.forEach(neuron => {
+                neuron.errorSignal = Math.max(Math.min(neuron.errorSignal, GRAD_LIMIT), -GRAD_LIMIT);
+            });
         } else {
             layer.neurons.forEach((neuron, idx) => {
                 if (neuron.isDropped) {
@@ -54,6 +66,8 @@ export function backwardPass(network, targetVector) {
                     return;
                 }
                 neuron.errorSignal = errorSums[idx] * activationMethod.derivative(neuron.netInput);
+                
+                neuron.errorSignal = Math.max(Math.min(neuron.errorSignal, GRAD_LIMIT), -GRAD_LIMIT);
             });
         }
     }
