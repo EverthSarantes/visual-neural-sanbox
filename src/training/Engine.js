@@ -1,6 +1,6 @@
 import { forwardPass } from '../propagation/forward.js';
 import { backwardPass } from '../propagation/backward.js';
-import { updateParameters } from '../propagation/optimizer.js';
+import { updateParameters, accumulateBatchGradients } from '../propagation/optimizer.js';
 import { getLossMethod } from '../loss_methods/registry.js';
 
 export class TrainingEngine {
@@ -72,24 +72,22 @@ export class TrainingEngine {
      */
     executeEpoch() {
         const size = this.network.batchSize;
-        // Determinar el tamaño real del lote (-1 significa procesar todo el CSV de golpe)
         const currentBatchSize = size === -1 ? this.trainSet.length : size;
         
         let batchCounter = 0;
 
-        // MEZCLADO INTERNO DE ÉPOCA (Shuffle para evitar sesgos de orden de filas)
         this.shuffleArray(this.trainSet);
 
-        // BUCLE DE ENTRENAMIENTO SUPERVISADO
         this.trainSet.forEach((sample) => {
             forwardPass(this.network, sample.inputs);
-            
             backwardPass(this.network, sample.targets);
+            
+            accumulateBatchGradients(this.network);
             
             batchCounter++;
 
             if (batchCounter >= currentBatchSize) {
-                updateParameters(this.network);
+                updateParameters(this.network); 
                 batchCounter = 0;
             }
         });
@@ -99,9 +97,7 @@ export class TrainingEngine {
         }
 
         this.evaluateMetrics();
-        
         this.network.epoch++;
-
         this.onEpochComplete(this.network.epoch, this.network.currentLoss, this.network.currentAccuracy);
     }
 
