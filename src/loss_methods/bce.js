@@ -1,4 +1,5 @@
 export const bceLogic = {
+    multiplier: -1,
     /**
      * Calcula la pérdida de entropía cruzada binaria
      */

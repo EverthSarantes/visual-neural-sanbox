@@ -7,6 +7,7 @@ export const lossRegistry = {
         id: 'mse',
         name: 'Error Cuadrático Medio (MSE)',
         description: 'Penaliza con mayor fuerza los errores grandes al elevar las diferencias al cuadrado. Es la métrica estándar para problemas de regresión.',
+        multiplier: mseLogic.multiplier,
         calculate: mseLogic.calculate,
         errorSignalTerm: mseLogic.errorSignalTerm
     },
@@ -14,6 +15,7 @@ export const lossRegistry = {
         id: 'bce',
         name: 'Entropía Cruzada Binaria (BCE)',
         description: 'Mide la divergencia entre dos distribuciones de probabilidad. Es el estándar de oro para problemas de clasificación binaria.',
+        multiplier: bceLogic.multiplier,
         calculate: bceLogic.calculate,
         errorSignalTerm: bceLogic.errorSignalTerm
     },
@@ -21,6 +23,7 @@ export const lossRegistry = {
         id: 'cce',
         name: 'Entropía Cruzada Categórica (CCE)',
         description: 'La pareja perfecta de Softmax. Mide la discrepancia entre dos distribuciones de probabilidad excluyentes, penalizando drásticamente los errores confiables.',
+        multiplier: cceLogic.multiplier,
         calculate: cceLogic.calculate,
         errorSignalTerm: cceLogic.errorSignalTerm
     }

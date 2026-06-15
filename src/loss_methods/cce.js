@@ -1,4 +1,5 @@
 export const cceLogic = {
+    multiplier: -1,
     /**
      * Fórmula: L = - Suma( target * log(actual) )
      */
