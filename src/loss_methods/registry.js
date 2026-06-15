@@ -1,5 +1,6 @@
 import { mseLogic } from './mse.js';
 import { bceLogic } from './bce.js';
+import { cceLogic } from './cce.js';
 
 export const lossRegistry = {
     mse: {
@@ -15,6 +16,13 @@ export const lossRegistry = {
         description: 'Mide la divergencia entre dos distribuciones de probabilidad. Es el estándar de oro para problemas de clasificación binaria.',
         calculate: bceLogic.calculate,
         errorSignalTerm: bceLogic.errorSignalTerm
+    },
+    cce: {
+        id: 'cce',
+        name: 'Entropía Cruzada Categórica (CCE)',
+        description: 'La pareja perfecta de Softmax. Mide la discrepancia entre dos distribuciones de probabilidad excluyentes, penalizando drásticamente los errores confiables.',
+        calculate: cceLogic.calculate,
+        errorSignalTerm: cceLogic.errorSignalTerm
     }
 };
 
