@@ -1,9 +1,17 @@
+import { noneLogic } from './none.js';
 import { reluLogic } from './relu.js';
 import { sigmoidLogic } from './sigmoid.js';
 import { tanhLogic } from './tanh.js';
 import { softmaxLogic } from './softmax.js';
 
 export const activationRegistry = {
+    none: {
+        id: 'none',
+        name: 'Ninguna (Identidad)',
+        description: 'No aplica ninguna transformación. La salida es igual a la entrada, lo que puede ser útil para capas ocultas o como opción de activación neutral.',
+        calculate: noneLogic.feed,
+        derivative: noneLogic.derivative
+    },
     relu: {
         id: 'relu',
         name: 'ReLU',
