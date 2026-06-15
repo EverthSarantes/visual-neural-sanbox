@@ -828,7 +828,7 @@ export class UIController {
             controlsGrid.className = 'grid grid-cols-2 gap-2';
 
             const selectRole = document.createElement('select');
-            selectRole.className = 'w-full bg-slate-950 border border-slate-800 rounded p-1 text-[11px] text-slate-300 focus:outline-none';
+            selectRole.className = 'w-full bg-slate-950 border border-slate-800 rounded p-1 text-[11px] text-slate-300 focus:outline-none cursor-pointer';
             selectRole.innerHTML = `
                 <option value="ignore">Ignorar</option>
                 <option value="input">Entrada</option>
@@ -837,11 +837,6 @@ export class UIController {
             
             col.role = col.role || 'ignore';
             selectRole.value = col.role;
-            
-            selectRole.addEventListener('change', (e) => {
-                col.role = e.target.value;
-            });
-            
             controlsGrid.appendChild(selectRole);
 
             const contextualContainer = document.createElement('div');
@@ -866,7 +861,6 @@ export class UIController {
             } else if (col.uniqueValues.length === 2) {
                 const binaryGrid = document.createElement('div');
                 binaryGrid.className = 'grid grid-cols-2 gap-1 text-[10px] text-slate-400 items-center';
-                
                 binaryGrid.innerHTML = `
                     <div class="flex items-center space-x-0.5"><span>0:</span><span class="text-indigo-400 font-bold truncate max-w-[40px]" title="${col.uniqueValues[0]}">${col.uniqueValues[0]}</span></div>
                     <div class="flex items-center space-x-0.5"><span>1:</span><span class="text-emerald-400 font-bold truncate max-w-[40px]" title="${col.uniqueValues[1]}">${col.uniqueValues[1]}</span></div>
@@ -882,6 +876,54 @@ export class UIController {
             controlsGrid.appendChild(contextualContainer);
             row.appendChild(controlsGrid);
 
+            const weightingContainer = document.createElement('div');
+            weightingContainer.className = 'mt-1 pt-1.5 border-t border-slate-800/40 flex items-center hidden';
+
+            const checkWeight = document.createElement('input');
+            checkWeight.type = 'checkbox';
+            checkWeight.className = 'rounded bg-slate-950 border-slate-800 text-indigo-500 focus:ring-0 w-3 h-3 cursor-pointer mr-1.5';
+            col.useClassWeighting = col.useClassWeighting || false;
+            checkWeight.checked = col.useClassWeighting;
+
+            checkWeight.addEventListener('change', (e) => {
+                col.useClassWeighting = e.target.checked;
+            });
+
+            let distributionStats = '';
+            if (!col.isFullyNumeric && col.frequencies) {
+                distributionStats = Object.entries(col.frequencies)
+                    .map(([val, percent]) => `${val}:${(percent * 100).toFixed(0)}%`)
+                    .join(', ');
+            }
+
+            const labelWeight = document.createElement('label');
+            labelWeight.className = 'flex items-center text-[10px] text-slate-400 cursor-pointer select-none w-full';
+            labelWeight.appendChild(checkWeight);
+
+            const textSpan = document.createElement('span');
+            textSpan.innerHTML = `Ponderar desbalance <span class="text-slate-500 font-mono text-[9px] ml-0.5">(${distributionStats})</span>`;
+            labelWeight.appendChild(textSpan);
+            
+            weightingContainer.appendChild(labelWeight);
+            row.appendChild(weightingContainer);
+
+            const syncWeightingVisibility = (currentRole) => {
+                if (currentRole === 'output' && !col.isFullyNumeric) {
+                    weightingContainer.classList.remove('hidden');
+                } else {
+                    weightingContainer.classList.add('hidden');
+                    col.useClassWeighting = false;
+                    checkWeight.checked = false;
+                }
+            };
+
+            syncWeightingVisibility(col.role);
+
+            selectRole.addEventListener('change', (e) => {
+                col.role = e.target.value;
+                syncWeightingVisibility(col.role);
+            });
+
             this.dom.columnsListContainer.appendChild(row);
         });
     }
@@ -892,6 +934,7 @@ export class UIController {
     compileSelectedArchitecture() {
         let inputCount = 0;
         let outputCount = 0;
+        const classWeights = [];
 
         Object.values(this.datasetDiagnostics).forEach(col => {
             const role = col.role;
@@ -903,13 +946,38 @@ export class UIController {
             }
 
             if (role === 'input') inputCount += weightIncrement;
-            if (role === 'output') outputCount += weightIncrement;
+            
+            if (role === 'output') {
+                if (col.useClassWeighting && !col.isFullyNumeric) {
+                    const numClasses = col.uniqueValues.length;
+
+                    if (numClasses === 2) {
+                        const freq0 = col.frequencies[col.uniqueValues[0]] || 0.5;
+                        const freq1 = col.frequencies[col.uniqueValues[1]] || 0.5;
+                        const w0 = 1 / (2 * freq0);
+                        const w1 = 1 / (2 * freq1);
+                        classWeights.push((w0 + w1) / 2);
+                    } else {
+                        col.uniqueValues.forEach(val => {
+                            const freq = col.frequencies[val] || 1e-7;
+                            const inverseWeight = 1 / (numClasses * freq);
+                            classWeights.push(inverseWeight);
+                        });
+                    }
+                } else {
+                    for (let k = 0; k < weightIncrement; k++) {
+                        classWeights.push(1.0);
+                    }
+                }
+                outputCount += weightIncrement;
+            }
         });
 
         if (inputCount === 0 || outputCount === 0) {
             alert('Configuración inválida: Debes asignar al menos una columna de Entrada y una de Salida.');
             return;
         }
+        this.network.classWeights = classWeights;
 
         this.network.buildArchitecture(inputCount, [4], outputCount);
         this.renderer.render(this.network);

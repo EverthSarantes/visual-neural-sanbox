@@ -49,6 +49,8 @@ export class CsvParser {
                 min: Infinity,
                 max: -Infinity,
                 uniqueValues: new Set(),
+                valueCounts: {}, 
+                frequencies: {},
                 sampleRows: []
             };
         });
@@ -66,6 +68,7 @@ export class CsvParser {
 
                 if (cellValue !== '') {
                     colReport.uniqueValues.add(cellValue);
+                    colReport.valueCounts[cellValue] = (colReport.valueCounts[cellValue] || 0) + 1;
                 }
 
                 const numericValue = Number(cellValue);
@@ -80,11 +83,20 @@ export class CsvParser {
         }
 
         this.headers.forEach(header => {
-            report[header].uniqueValues = Array.from(report[header].uniqueValues);
+            const colReport = report[header];
+            colReport.uniqueValues = Array.from(colReport.uniqueValues);
             
-            if (!report[header].isFullyNumeric || report[header].min === Infinity) {
-                report[header].min = null;
-                report[header].max = null;
+            if (!colReport.isFullyNumeric) {
+                colReport.uniqueValues.forEach(val => {
+                    const count = colReport.valueCounts[val] || 0;
+                    colReport.frequencies[val] = count / colReport.totalRows;
+                });
+            }
+            delete colReport.valueCounts;
+
+            if (!colReport.isFullyNumeric || colReport.min === Infinity) {
+                colReport.min = null;
+                colReport.max = null;
             }
         });
 
