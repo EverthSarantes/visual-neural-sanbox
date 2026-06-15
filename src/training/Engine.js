@@ -87,13 +87,13 @@ export class TrainingEngine {
             batchCounter++;
 
             if (batchCounter >= currentBatchSize) {
-                updateParameters(this.network); 
+                updateParameters(this.network, batchCounter); 
                 batchCounter = 0;
             }
         });
 
         if (batchCounter > 0) {
-            updateParameters(this.network);
+            updateParameters(this.network, batchCounter);
         }
 
         this.evaluateMetrics();

@@ -31,11 +31,17 @@ export function accumulateBatchGradients(network) {
 }
 
 /**
- * Consume la suma de gradientes acumulados de todo el lote, aplica momentum/WD
- * y limpia los acumuladores a cero.
+ * Actualiza los pesos y sesgos utilizando el promedio de los gradientes acumulados.
+ * @param {Network} network 
+ * @param {number} batchSize - Cantidad de muestras acumuladas en este lote.
  */
-export function updateParameters(network) {
+export function updateParameters(network, batchSize) {
     const PARAM_LIMIT = 100.0;
+    
+    const divisor = batchSize || 1; 
+
+    const lossMethod = getLossMethod(network.lossTypeId);
+    const multiplier = (lossMethod && lossMethod.multiplier !== undefined) ? lossMethod.multiplier : 1;
 
     for (let i = 1; i < network.layers.length; i++) {
         const layer = network.layers[i];
@@ -43,17 +49,17 @@ export function updateParameters(network) {
         layer.neurons.forEach(neuron => {
             if (neuron.isDropped) return;
 
-            let biasGradient = neuron.batchBiasGrad || 0;
+            let biasGradient = (neuron.batchBiasGrad || 0) / divisor;
+
             neuron.biasVelocity = (network.momentum * neuron.biasVelocity) + (network.learningRate * biasGradient);
             neuron.bias += neuron.biasVelocity;
             neuron.bias = Math.max(Math.min(neuron.bias, PARAM_LIMIT), -PARAM_LIMIT);
-
             neuron.batchBiasGrad = 0;
 
             neuron.inputs.forEach(connection => {
                 if (connection.isDropped || connection.from.isDropped) return;
 
-                let weightGradient = connection.batchWeightGrad || 0;
+                let weightGradient = (connection.batchWeightGrad || 0) / divisor;
 
                 if (network.weightDecay > 0) {
                     weightGradient -= network.weightDecay * connection.weight;
