@@ -107,6 +107,8 @@ export class TrainingEngine {
     evaluateMetrics() {
         if (this.testSet.length === 0) return;
 
+        this.shuffleArray(this.testSet);
+
         let totalLoss = 0;
         let correctPredictions = 0;
         const lossMethod = getLossMethod(this.network.lossTypeId);
