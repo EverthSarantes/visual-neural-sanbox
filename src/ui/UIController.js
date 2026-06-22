@@ -830,12 +830,12 @@ export class UIController {
             const selectRole = document.createElement('select');
             selectRole.className = 'w-full bg-slate-950 border border-slate-800 rounded p-1 text-[11px] text-slate-300 focus:outline-none cursor-pointer';
             selectRole.innerHTML = `
-                <option value="ignore">Ignorar</option>
                 <option value="input">Entrada</option>
                 <option value="output">Salida</option>
+                <option value="ignore">Ignorar</option>
             `;
             
-            col.role = col.role || 'ignore';
+            col.role = col.role || 'input';
             selectRole.value = col.role;
             controlsGrid.appendChild(selectRole);
 
