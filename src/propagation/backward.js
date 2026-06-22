@@ -17,11 +17,24 @@ export function backwardPass(network, targetVector) {
     const outputActivationMethod = getActivation(outputLayer.activationId);
 
     const GRAD_LIMIT = 10.0;
+    let sampleWeight = 1.0;
+
+    if (network.useClassWeighting && network.classWeights && network.classWeights.length > 0) {
+        if (outputLayer.neurons.length === 1) {
+            sampleWeight = network.classWeights[0] || 1.0;
+        } else {
+            const trueClassIdx = targetVector.indexOf(1);
+            if (trueClassIdx !== -1 && network.classWeights[trueClassIdx] !== undefined) {
+                sampleWeight = network.classWeights[trueClassIdx];
+            }
+        }
+    }
 
     if (outputActivationMethod.derivativeLayer) {
         outputActivationMethod.derivativeLayer(outputLayer, targetVector, lossMethod);
         
         outputLayer.neurons.forEach(neuron => {
+            neuron.errorSignal = neuron.errorSignal * sampleWeight;
             neuron.errorSignal = Math.max(Math.min(neuron.errorSignal, GRAD_LIMIT), -GRAD_LIMIT);
         });
     } else {
@@ -31,8 +44,9 @@ export function backwardPass(network, targetVector) {
                 return;
             }
             const lossTerm = lossMethod.errorSignalTerm(neuron.value, targetVector[idx] || 0);
-            neuron.errorSignal = lossTerm * outputActivationMethod.derivative(neuron.netInput);
+            let gradient = lossTerm * outputActivationMethod.derivative(neuron.netInput);
             
+            neuron.errorSignal = gradient * sampleWeight;
             neuron.errorSignal = Math.max(Math.min(neuron.errorSignal, GRAD_LIMIT), -GRAD_LIMIT);
         });
     }
@@ -55,7 +69,6 @@ export function backwardPass(network, targetVector) {
 
         if (activationMethod.derivativeLayerHidden) {
             activationMethod.derivativeLayerHidden(layer, errorSums);
-            
             layer.neurons.forEach(neuron => {
                 neuron.errorSignal = Math.max(Math.min(neuron.errorSignal, GRAD_LIMIT), -GRAD_LIMIT);
             });
@@ -66,7 +79,6 @@ export function backwardPass(network, targetVector) {
                     return;
                 }
                 neuron.errorSignal = errorSums[idx] * activationMethod.derivative(neuron.netInput);
-                
                 neuron.errorSignal = Math.max(Math.min(neuron.errorSignal, GRAD_LIMIT), -GRAD_LIMIT);
             });
         }
