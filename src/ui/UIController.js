@@ -75,7 +75,7 @@ export class UIController {
 
         this.engine = new TrainingEngine(
             this.network,
-            (epoch, loss, accuracy) => this.handleEpochComplete(epoch, loss, accuracy), // Al acabar época
+            (epoch, loss, accuracy, mae) => this.handleEpochComplete(epoch, loss, accuracy, mae), // Al acabar época
             () => this.renderer.render(this.network) // Al avanzar la animación visual
         );
 
@@ -313,13 +313,27 @@ export class UIController {
     /**
      * Captura las analíticas de fin de época emitidas por el motor y refresca los textos de la UI
      */
-    handleEpochComplete(epoch, loss, accuracy) {
+    handleEpochComplete(epoch, loss, accuracy, mae) {
         if (this.dom.lblEpoch) this.dom.lblEpoch.innerText = epoch;
         if (this.dom.lblLoss) this.dom.lblLoss.innerText = loss.toFixed(5);
-        if (this.dom.lblAccuracy) this.dom.lblAccuracy.innerText = `${accuracy.toFixed(2)}%`;
+        
+        const isRegression = mae !== null && mae !== undefined;
+
+        const accuracyHeader = document.getElementById('chart-accuracy')?.closest('.flex-col')?.querySelector('h2');
+        
+        if (accuracyHeader) {
+            accuracyHeader.innerText = isRegression ? "Error Promedio (MAE)" : "Precisión (Accuracy)";
+        }
+
+        if (this.dom.lblAccuracy) {
+            this.dom.lblAccuracy.innerText = isRegression 
+                ? `±${mae.toFixed(2)} pts`
+                : `${accuracy.toFixed(2)}%`;
+        }
         
         this.updateInspectorValues();
-        this.metricsChart.pushMetrics(epoch, loss, accuracy);
+
+        this.metricsChart.pushMetrics(epoch, loss, isRegression ? mae : accuracy, isRegression);
     }
 
     /**
@@ -935,6 +949,7 @@ export class UIController {
         let inputCount = 0;
         let outputCount = 0;
         const classWeights = [];
+        this.network.targetMetadata = [];
 
         Object.values(this.datasetDiagnostics).forEach(col => {
             const role = col.role;
@@ -948,6 +963,15 @@ export class UIController {
             if (role === 'input') inputCount += weightIncrement;
             
             if (role === 'output') {
+                if (col.isFullyNumeric) {
+                    this.network.targetMetadata.push({
+                        name: col.name,
+                        min: col.min,
+                        max: col.max,
+                        normalization: col.normalization || 'none'
+                    });
+                }
+
                 if (col.useClassWeighting && !col.isFullyNumeric) {
                     const numClasses = col.uniqueValues.length;
 

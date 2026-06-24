@@ -73,17 +73,16 @@ export class MetricsChart {
     /**
      * Inyecta un nuevo punto de datos en ambas curvas y fuerza el redibujado
      */
-    pushMetrics(epoch, loss, accuracy) {
+    pushMetrics(epoch, loss, metricValue, isRegression = false) {
         if (!this.lossChart || !this.accuracyChart) return;
 
         this.lossChart.data.labels.push(epoch);
         this.lossChart.data.datasets[0].data.push(loss);
 
         this.accuracyChart.data.labels.push(epoch);
-        this.accuracyChart.data.datasets[0].data.push(accuracy);
+        this.accuracyChart.data.datasets[0].data.push(metricValue);
 
         const maxPuntosVisibles = 300;
-        
         if (this.lossChart.data.labels.length > maxPuntosVisibles) {
             this.lossChart.data.labels.shift();
             this.lossChart.data.datasets[0].data.shift();
@@ -91,6 +90,8 @@ export class MetricsChart {
             this.accuracyChart.data.labels.shift();
             this.accuracyChart.data.datasets[0].data.shift();
         }
+
+        this.accuracyChart.data.datasets[0].borderColor = isRegression ? '#38bdf8' : '#10b981';
 
         this.lossChart.update();
         this.accuracyChart.update();
