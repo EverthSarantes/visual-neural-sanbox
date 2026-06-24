@@ -21,8 +21,11 @@ export function exportModel(network, uiController, version = "1.0.0") {
             epoch: network.epoch,
             currentLoss: network.currentLoss,
             currentAccuracy: network.currentAccuracy,
+            currentMAE: network.currentMAE,
             datasetDiagnostics: uiController.datasetDiagnostics,
         },
+
+        targetMetadata: network.targetMetadata,
 
         datasets: {
             trainSet: uiController.trainSet || [],
@@ -93,6 +96,8 @@ export function importModel(jsonData, network, uiController, renderer) {
         network.epoch = cfg.epoch;
         network.currentLoss = cfg.currentLoss;
         network.currentAccuracy = cfg.currentAccuracy;
+        network.currentMAE = cfg.currentMAE || null;
+        network.targetMetadata = jsonData.targetMetadata || null;
 
         // RESTAURAR DATASETS Y METADATA DE DIAGNÓSTICO
         uiController.datasetDiagnostics = cfg.datasetDiagnostics;
