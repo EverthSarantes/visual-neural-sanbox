@@ -98,7 +98,12 @@ export class TrainingEngine {
 
         this.evaluateMetrics();
         this.network.epoch++;
-        this.onEpochComplete(this.network.epoch, this.network.currentLoss, this.network.currentAccuracy);
+        this.onEpochComplete(
+            this.network.epoch, 
+            this.network.currentLoss, 
+            this.network.currentAccuracy,
+            this.network.currentMAE
+        );
     }
 
     /**
@@ -111,33 +116,75 @@ export class TrainingEngine {
 
         let totalLoss = 0;
         let correctPredictions = 0;
+        let totalPhysicalAbsoluteError = 0;
+        let totalNormalizedAbsoluteError = 0;
         const lossMethod = getLossMethod(this.network.lossTypeId);
 
         this.testSet.forEach(sample => {
-            // apagar por completo el Dropout. Queremos evaluar la red al 100% de su capacidad física.
             const wasTraining = this.network.isTraining;
             this.network.isTraining = false;
             
             const outputs = forwardPass(this.network, sample.inputs);
             
-            this.network.isTraining = wasTraining; // Restaurar estado original
+            this.network.isTraining = wasTraining;
 
             // Sumar pérdidas puntuales de cada neurona de salida
             outputs.forEach((pred, idx) => {
                 totalLoss += lossMethod.calculate(pred, sample.targets[idx]);
             });
 
-            // Evaluar Acierto (Accuracy) basado en Clasificación (ArgMax)
-            const maxPredIdx = outputs.indexOf(Math.max(...outputs));
-            const maxTargetIdx = sample.targets.indexOf(Math.max(...sample.targets));
-            
-            if (maxPredIdx === maxTargetIdx) {
-                correctPredictions++;
+            if (outputs.length > 1 && this.network.targetMetadata.length === 0) {
+                const maxPredIdx = outputs.indexOf(Math.max(...outputs));
+                const maxTargetIdx = sample.targets.indexOf(Math.max(...sample.targets));
+                if (maxPredIdx === maxTargetIdx) {
+                    correctPredictions++;
+                }
+            } else {
+                outputs.forEach((pred, idx) => {
+                    const target = sample.targets[idx] || 0;
+                    const normError = Math.abs(pred - target);
+                    
+                    totalNormalizedAbsoluteError += normError;
+
+                    let scaleFactor = 1.0;
+                    const meta = this.network.targetMetadata ? this.network.targetMetadata[idx] : null;
+
+                    if (meta && meta.max !== null && meta.min !== null) {
+                        const originalRange = meta.max - meta.min;
+                        if (meta.normalization === 'minmax_0_1') {
+                            scaleFactor = originalRange;
+                        } else if (meta.normalization === 'minmax_1_1') {
+                            scaleFactor = originalRange / 2;
+                        }
+                    }
+
+                    totalPhysicalAbsoluteError += normError * scaleFactor;
+                });
             }
         });
 
         this.network.currentLoss = totalLoss / this.testSet.length;
-        this.network.currentAccuracy = (correctPredictions / this.testSet.length) * 100;
+
+        const outputLayer = this.network.layers[this.network.layers.length - 1];
+        
+        if (outputLayer.neurons.length > 1 && this.network.targetMetadata.length === 0) {
+            this.network.currentAccuracy = (correctPredictions / this.testSet.length) * 100;
+            this.network.currentMAE = null;
+        } else {
+            const totalPredictionsCount = this.testSet.length * outputLayer.neurons.length;
+
+            this.network.currentMAE = totalPhysicalAbsoluteError / totalPredictionsCount;
+            
+            const avgNormalizedError = totalNormalizedAbsoluteError / totalPredictionsCount;
+            this.network.currentAccuracy = Math.max(0, (1 - avgNormalizedError) * 100);
+        }
+
+        this.onEpochComplete(
+            this.network.epoch, 
+            this.network.currentLoss, 
+            this.network.currentAccuracy,
+            this.network.currentMAE
+        );
     }
 
     /**
