@@ -326,9 +326,12 @@ export class UIController {
         }
 
         if (this.dom.lblAccuracy) {
-            this.dom.lblAccuracy.innerText = isRegression 
-                ? `±${mae.toFixed(2)} pts`
-                : `${accuracy.toFixed(2)}%`;
+            if (isRegression) {
+                const unidad = this.network.targetMetadata?.[0]?.name || "pts";
+                this.dom.lblAccuracy.innerText = `±${mae.toFixed(2)} ${unidad}`;
+            } else {
+                this.dom.lblAccuracy.innerText = `${accuracy.toFixed(2)}%`;
+            }
         }
         
         this.updateInspectorValues();
