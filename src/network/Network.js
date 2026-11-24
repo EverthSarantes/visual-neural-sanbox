@@ -24,7 +24,13 @@ export class Network {
         this.epoch = 0;
         this.currentLoss = 0;
         this.currentAccuracy = 0;
+        this.currentMAE = null;
         this.isTraining = false;
+
+        // Metadatos de las columnas objetivo (para desnormalizar métricas)
+        this.targetMetadata = [];
+        // Activa la ponderación por clase cuando el dataset está desbalanceado
+        this.useClassWeighting = false;
     }
 
     /**
