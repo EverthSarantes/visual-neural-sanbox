@@ -33,7 +33,7 @@
 <body class="h-full flex flex-col font-sans overflow-hidden">
 
     <header
-        class="bg-slate-850 border-b border-slate-800 bg-slate-800/50 backdrop-blur px-6 py-4 flex items-center justify-between shadow-sm z-20">
+        class="bg-slate-850 border-b border-slate-800 bg-slate-800/50 backdrop-blur px-3 lg:px-6 py-3 lg:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm z-20">
         <div class="flex items-center space-x-3">
             <div>
                 <h1 class="text-lg font-bold text-white tracking-tight">Visual Neural Sandbox</h1>
@@ -56,9 +56,9 @@
         </div>
     </header>
 
-    <main class="flex-1 flex overflow-hidden p-4 gap-4 relative">
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden p-2 lg:p-4 gap-2 lg:gap-4 relative">
 
-        <section id="panel-left" class="w-80 bg-slate-800/40 border border-slate-800 rounded-xl p-4 flex flex-col space-y-5 overflow-y-auto backdrop-blur-sm panel-transition shrink-0">
+        <section id="panel-left" class="fixed lg:static inset-y-0 left-0 z-30 w-72 sm:w-80 bg-slate-800/95 lg:bg-slate-800/40 border-r lg:border border-slate-800 rounded-none lg:rounded-xl p-4 flex flex-col space-y-5 overflow-y-auto backdrop-blur-sm panel-transition shrink-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300">
             
             <div>
                 <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">1. Carga de Datos (.CSV)</h2>
@@ -170,9 +170,9 @@
             </div>
         </section>
 
-        <section class="flex-1 bg-slate-950/60 border border-slate-800 rounded-xl flex flex-col relative overflow-hidden">
+        <section class="flex-1 bg-slate-950/60 border border-slate-800 rounded-xl flex flex-col relative overflow-hidden min-h-[50vh] lg:min-h-0">
             
-            <div class="w-full bg-slate-900/80 border-b border-slate-800 px-6 py-3 flex items-center justify-center space-x-6 backdrop-blur-sm shrink-0 z-10">
+            <div class="w-full bg-slate-900/80 border-b border-slate-800 px-3 lg:px-6 py-2 lg:py-3 flex items-center justify-center flex-wrap gap-2 lg:space-x-6 backdrop-blur-sm shrink-0 z-10">
                 <div class="text-xs font-mono border-r border-slate-800 pr-5 flex items-center">
                     <span class="text-slate-500 mr-1.5 uppercase font-bold tracking-wider text-[10px]">Epoch:</span>
                     <span id="lbl-epoch-counter" class="text-white font-bold text-sm tracking-widest">0000</span>
@@ -187,14 +187,14 @@
             </div>
 
             <div class="flex-1 relative w-full h-full">
-                <button id="btn-toggle-left" title="Alternar panel izquierdo" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-10 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg flex items-center justify-center text-[10px] text-slate-400 hover:text-white transition-all shadow-lg z-10 font-mono">◀</button>
-                <button id="btn-toggle-right" title="Alternar panel derecho" class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-10 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg flex items-center justify-center text-[10px] text-slate-400 hover:text-white transition-all shadow-lg z-10 font-mono">▶</button>
+                <button id="btn-toggle-left" title="Alternar panel izquierdo" class="absolute left-2 lg:left-3 top-1/2 -translate-y-1/2 w-6 h-12 lg:w-5 lg:h-10 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg flex items-center justify-center text-[10px] text-slate-400 hover:text-white transition-all shadow-lg z-40 font-mono">◀</button>
+                <button id="btn-toggle-right" title="Alternar panel derecho" class="absolute right-2 lg:right-3 top-1/2 -translate-y-1/2 w-6 h-12 lg:w-5 lg:h-10 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg flex items-center justify-center text-[10px] text-slate-400 hover:text-white transition-all shadow-lg z-40 font-mono">▶</button>
 
                 <canvas id="neural-canvas" class="absolute inset-0 block w-full h-full cursor-grab active:cursor-grabbing"></canvas>
             </div>
         </section>
 
-        <section id="panel-right" class="w-80 bg-slate-800/40 border border-slate-800 rounded-xl p-4 flex flex-col space-y-4 overflow-y-auto panel-transition shrink-0">
+        <section id="panel-right" class="fixed lg:static inset-y-0 right-0 z-30 w-72 sm:w-80 bg-slate-800/95 lg:bg-slate-800/40 border-l lg:border border-slate-800 rounded-none lg:rounded-xl p-4 flex flex-col space-y-4 overflow-y-auto panel-transition shrink-0 transform translate-x-full lg:translate-x-0 transition-transform duration-300">
             <div class="flex flex-col">
                 <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">Gráfico de Pérdida (Loss)</h2>
                 <div class="h-44 relative bg-slate-900/50 border border-slate-800 rounded-xl p-2 flex items-center justify-center">
@@ -245,7 +245,7 @@
     </main>
 
     <div id="modal-prediction" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-xl shadow-2xl p-6 space-y-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg mx-2 sm:mx-0 rounded-xl shadow-2xl p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                 <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">

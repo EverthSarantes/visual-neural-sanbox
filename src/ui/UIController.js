@@ -171,6 +171,11 @@ export class UIController {
         this.dom.btnToggleRight.addEventListener('click', () => this.togglePanel('right'));
 
         window.addEventListener('resize', () => {
+            // Normalizar estado de paneles al cambiar de breakpoint
+            if (window.innerWidth >= 1024) {
+                this.dom.panelLeft.classList.remove('-translate-x-full', 'translate-x-full');
+                this.dom.panelRight.classList.remove('-translate-x-full', 'translate-x-full');
+            }
             this.renderer.resize();
             this.renderer.render(this.network);
         });
@@ -462,15 +467,33 @@ export class UIController {
     togglePanel(side) {
         const panel = side === 'left' ? this.dom.panelLeft : this.dom.panelRight;
         const btn = side === 'left' ? this.dom.btnToggleLeft : this.dom.btnToggleRight;
+        const isMobile = window.innerWidth < 1024;
 
-        if (panel.classList.contains('w-80')) {
-            panel.classList.remove('w-80', 'p-4', 'border');
-            panel.classList.add('w-0', 'p-0', 'border-0', 'overflow-hidden');
-            btn.innerText = side === 'left' ? '▶' : '◀';
+        if (isMobile) {
+            const hiddenClass = side === 'left' ? '-translate-x-full' : 'translate-x-full';
+            const isOpen = !panel.classList.contains(hiddenClass);
+            if (isOpen) {
+                panel.classList.add(hiddenClass);
+                btn.innerText = side === 'left' ? '▶' : '◀';
+            } else {
+                // Cerrar el otro panel si está abierto
+                const otherSide = side === 'left' ? 'right' : 'left';
+                const otherPanel = otherSide === 'left' ? this.dom.panelLeft : this.dom.panelRight;
+                const otherHidden = otherSide === 'left' ? '-translate-x-full' : 'translate-x-full';
+                otherPanel.classList.add(otherHidden);
+                panel.classList.remove(hiddenClass);
+                btn.innerText = side === 'left' ? '◀' : '▶';
+            }
         } else {
-            panel.classList.remove('w-0', 'p-0', 'border-0', 'overflow-hidden');
-            panel.classList.add('w-80', 'p-4', 'border');
-            btn.innerText = side === 'left' ? '◀' : '▶';
+            if (panel.classList.contains('w-0')) {
+                panel.classList.remove('w-0', 'p-0', 'border-0', 'overflow-hidden');
+                panel.classList.add('w-80', 'p-4', 'border');
+                btn.innerText = side === 'left' ? '◀' : '▶';
+            } else {
+                panel.classList.remove('w-72', 'sm:w-80', 'w-80', 'p-4', 'border');
+                panel.classList.add('w-0', 'p-0', 'border-0', 'overflow-hidden');
+                btn.innerText = side === 'left' ? '▶' : '◀';
+            }
         }
 
         setTimeout(() => {
