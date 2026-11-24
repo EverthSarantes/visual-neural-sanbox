@@ -1,4 +1,6 @@
+import { identity, identityDerivative } from '../math/activations.js';
+
 export const noneLogic = {
-    feed: (x) => x,
-    derivative: (x) => x,
+    feed: identity,
+    derivative: identityDerivative,
 };

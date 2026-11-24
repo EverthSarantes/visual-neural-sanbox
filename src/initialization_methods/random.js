@@ -1,3 +1,2 @@
-export const random = {
-    generate: () => Math.random() * 2 - 1,
-}
+import { randomWeight } from '../math/initializers.js';
+export const random = { generate: randomWeight };
