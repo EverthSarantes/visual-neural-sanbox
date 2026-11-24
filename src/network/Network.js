@@ -41,20 +41,43 @@ export class Network {
         const strategy = getInitializationMethod(this.initializationStrategyId);
 
         this.layers.forEach(layer => {
-            layer.neurons.forEach(neuron => {
-                const nIn = neuron.inputs.length > 0 ? neuron.inputs.length : 1;
-                const nOut = neuron.outputs.length > 0 ? neuron.outputs.length : 1;
+            if (layer.layerType === 'dense' || layer.type === 'input' || layer.type === 'output') {
+                layer.neurons.forEach(neuron => {
+                    const nIn = neuron.inputs.length > 0 ? neuron.inputs.length : 1;
+                    const nOut = neuron.outputs.length > 0 ? neuron.outputs.length : 1;
 
-                neuron.bias = Math.random() * 0.1 - 0.05;
-                neuron.biasVelocity = 0;
-                neuron.isDropped = false;
+                    neuron.bias = Math.random() * 0.1 - 0.05;
+                    neuron.biasVelocity = 0;
+                    neuron.isDropped = false;
 
-                neuron.outputs.forEach(connection => {
-                    connection.weight = strategy.generateWeight(nIn, nOut);
-                    connection.velocity = 0;
-                    connection.isDropped = false;
+                    neuron.outputs.forEach(connection => {
+                        connection.weight = strategy.generateWeight(nIn, nOut);
+                        connection.velocity = 0;
+                        connection.isDropped = false;
+                    });
                 });
-            });
+            } else if (layer.layerType === 'dense' && layer.weights === null) {
+                // Inicializar pesos para capas dense en modo tensor (sin neuronas/conexiones)
+                const outF = layer.neurons.length || 1;
+                const inF = 1; // se ajustará en forward; usar placeholder
+                // Nota: inF real se conoce en forward; aquí inicializamos con tamaño mínimo
+                // Para redes MLP, los pesos viven en conexiones, no aquí.
+            } else if (layer.layerType === 'conv2d') {
+                const p = layer.params || {};
+                const filters = p.filters || 8;
+                const inC = p.inChannels || 1;
+                const k = p.kernelSize || 3;
+                const fanIn = inC * k * k;
+                const scale = Math.sqrt(2 / fanIn);
+                const wSize = filters * inC * k * k;
+                layer.weights = new Float32Array(wSize);
+                for (let i = 0; i < wSize; i++) layer.weights[i] = (Math.random() * 2 - 1) * scale;
+                layer.bias = new Float32Array(filters);
+                layer.gradW = new Float32Array(wSize);
+                layer.gradB = new Float32Array(filters);
+                layer.cache = null;
+            }
+            // maxpool2d y flatten no tienen pesos
         });
     }
 
@@ -91,6 +114,26 @@ export class Network {
         outputLayer.addNeurons(outputCount);
         this.layers.push(outputLayer);
 
+        this.connectLayers();
+        this.applyWeightInitialization();
+    }
+
+    /**
+     * Construye una red a partir de una lista de especificaciones de capa.
+     * specs: [{ layerType, params, activationId, type, neuronCount? }]
+     */
+    buildFromSpecs(specs) {
+        this.layers = [];
+        specs.forEach((spec, idx) => {
+            const layerType = spec.layerType || 'dense';
+            const layerId = spec.id || `${layerType}_${idx}`;
+            const layerTypeStr = idx === 0 ? 'input' : (idx === specs.length - 1 ? 'output' : 'hidden');
+            const layer = new Layer(layerId, layerTypeStr, spec.activationId || 'relu', layerType, spec.params || {});
+            if (layerType === 'dense' && spec.neuronCount) {
+                layer.addNeurons(spec.neuronCount);
+            }
+            this.layers.push(layer);
+        });
         this.connectLayers();
         this.applyWeightInitialization();
     }
