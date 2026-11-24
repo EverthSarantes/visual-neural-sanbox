@@ -229,7 +229,29 @@ export class CsvController {
         this.ui.trainSet = fullDataset.slice(0, cutoff);
         this.ui.testSet = fullDataset.slice(cutoff);
 
-        this.ui.engine.setDatasets(this.ui.trainSet, this.ui.testSet);
+        this.ui.engine = null;
+        this.ui.trainingClient.init({
+            inputCount: inputCount,
+            hiddenTopology: [4],
+            outputCount: outputCount,
+            outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+            lossTypeId: this.network.lossTypeId,
+            learningRate: this.network.learningRate,
+            momentum: this.network.momentum,
+            weightDecay: this.network.weightDecay,
+            dropoutRate: this.network.dropoutRate,
+            batchSize: this.network.batchSize,
+            initializationStrategyId: this.network.initializationStrategyId,
+            epoch: this.network.epoch,
+            currentLoss: this.network.currentLoss,
+            currentAccuracy: this.network.currentAccuracy,
+            currentMAE: this.network.currentMAE,
+            targetMetadata: this.network.targetMetadata,
+            classWeights: this.network.classWeights,
+            useClassWeighting: this.network.useClassWeighting,
+            trainSet: this.ui.trainSet,
+            testSet: this.ui.testSet,
+        });
 
         this.ui.syncMetrics();
         this.ui.updatePlaybackButtonsUI();

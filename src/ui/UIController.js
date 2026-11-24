@@ -4,7 +4,7 @@ import { connectionRegistry } from '../connection_methods/registry.js';
 import { lossRegistry } from '../loss_methods/registry.js';
 import { initializationRegistry } from '../initialization_methods/registry.js';
 import { CsvParser } from '../utils/CsvParser.js';
-import { TrainingEngine } from '../training/Engine.js';
+import { TrainingClient } from '../training/TrainingClient.js';
 import { MetricsChart } from './MetricsChart.js';
 import { exportModel, importModel } from '../utils/Persistence.js';
 import { PredictionModal } from './PredictionModal.js';
@@ -74,11 +74,38 @@ export class UIController {
             lblEpoch: document.getElementById('lbl-epoch-counter')
         };
 
-        this.engine = new TrainingEngine(
-            this.network,
-            (epoch, loss, accuracy, mae) => this.handleEpochComplete(epoch, loss, accuracy, mae), // Al acabar época
-            () => this.renderer.render(this.network) // Al avanzar la animación visual
-        );
+        this.trainingClient = new TrainingClient();
+
+        // Cuando el worker termina una época, actualizamos la red local y la UI
+        this.trainingClient.on('ready', (payload) => {
+            if (payload?.network) this.network.applySnapshot(payload.network);
+            this.renderer.render(this.network);
+            this.syncMetrics();
+        });
+
+        this.trainingClient.on('epoch', (payload) => {
+            if (payload?.network) this.network.applySnapshot(payload.network);
+            this.handleEpochComplete(payload.epoch, payload.loss, payload.accuracy, payload.mae);
+            this.renderer.render(this.network);
+        });
+
+        this.trainingClient.on('resetDone', (payload) => {
+            if (payload?.network) this.network.applySnapshot(payload.network);
+            this.metricsChart.clear();
+            this.renderer.render(this.network);
+            this.syncMetrics();
+            this.updateInspectorValues();
+            this.updatePlaybackButtonsUI();
+        });
+
+        this.trainingClient.on('paused', () => {
+            this.updatePlaybackButtonsUI();
+        });
+
+        this.trainingClient.on('error', (payload) => {
+            console.error('Worker error:', payload?.message);
+            alert('Error en el worker de entrenamiento: ' + (payload?.message || 'desconocido'));
+        });
 
         this.metricsChart = new MetricsChart();
         this.predictionModal = new PredictionModal(this.network, this);
@@ -124,25 +151,29 @@ export class UIController {
 
         this.dom.selectLossType.addEventListener('change', (e) => {
             this.network.lossTypeId = e.target.value;
+            this.trainingClient.setHyperparams({ lossTypeId: e.target.value });
         });
 
         this.dom.sliderLr.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
             this.dom.valLr.innerText = val.toFixed(3);
             this.network.learningRate = val;
+            this.trainingClient.setHyperparams({ learningRate: val });
         });
 
         this.dom.sliderMomentum.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
             this.dom.valMomentum.innerText = val.toFixed(2);
             this.network.momentum = val;
+            this.trainingClient.setHyperparams({ momentum: val });
         });
 
         this.dom.sliderDropout.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
             this.dom.valDropout.innerText = val.toFixed(2);
             this.network.dropoutRate = val;
-            
+            this.trainingClient.setHyperparams({ dropoutRate: val });
+
             this.renderer.render(this.network); 
         });
 
@@ -150,21 +181,24 @@ export class UIController {
             const val = parseFloat(e.target.value);
             this.dom.valDecay.innerText = val.toFixed(4);
             this.network.weightDecay = val;
+            this.trainingClient.setHyperparams({ weightDecay: val });
         });
 
         this.dom.selectBatchSize.addEventListener('change', (e) => {
             const val = parseInt(e.target.value, 10);
             this.network.batchSize = val;
+            this.trainingClient.setHyperparams({ batchSize: val });
         });
 
         this.dom.selectInitType.addEventListener('change', (e) => {
             this.network.initializationStrategyId = e.target.value;
 
-            if(this.isSyncing) return;
+            if (this.isSyncing) return;
 
             this.network.applyWeightInitialization();
             this.renderer.render(this.network);
             this.updateInspectorValues();
+            this.trainingClient.reinit(e.target.value);
         });
 
         this.dom.btnToggleLeft.addEventListener('click', () => this.togglePanel('left'));
@@ -288,32 +322,29 @@ export class UIController {
                 alert('Primero debes cargar un archivo CSV y confirmar el mapeo estructural.');
                 return;
             }
-            this.engine.start();
+            this.network.isTraining = true;
+            this.trainingClient.start();
             this.updatePlaybackButtonsUI();
         });
 
         // Botón  PAUSE
         this.dom.btnPause.addEventListener('click', () => {
-            this.engine.pause();
+            this.network.isTraining = false;
+            this.trainingClient.pause();
             this.updatePlaybackButtonsUI();
         });
 
         // Botón STEP (Paso a paso, época por época)
         this.dom.btnStep.addEventListener('click', () => {
             if (!this.trainSet || this.trainSet.length === 0) return;
-            this.engine.step();
+            this.trainingClient.step();
         });
 
         // Botón RESET (Reiniciar pesos y épocas)
         this.dom.btnReset.addEventListener('click', () => {
-            this.engine.pause();
-            this.network.resetTrainingState();
-            this.metricsChart.clear();
-            // Refrescar el lienzo físico y los textos de analíticas
-            this.renderer.render(this.network);
-            this.syncMetrics();
-            this.updatePlaybackButtonsUI();
-            this.updateInspectorValues();
+            this.network.isTraining = false;
+            this.trainingClient.pause();
+            this.trainingClient.reset();
         });
     }
 
@@ -546,6 +577,9 @@ export class UIController {
         selectAct.addEventListener('change', (e) => {
             layer.activationId = e.target.value;
             layer.neurons.forEach(n => n.activationId = e.target.value);
+            if (this.trainSet && this.trainSet.length > 0) {
+                this.trainingClient.setNetwork(this.network);
+            }
         });
         container.appendChild(labelAct);
         container.appendChild(selectAct);
@@ -570,6 +604,30 @@ export class UIController {
                 layer.connectionTypeId = e.target.value;
                 this.network.rebuildConnections();
                 this.renderer.render(this.network);
+                if (this.trainSet && this.trainSet.length > 0) {
+                    this.trainingClient.init({
+                        inputCount: this.network.layers[0].neurons.length,
+                        hiddenTopology: this.network.layers.slice(1, -1).map(l => l.neurons.length),
+                        outputCount: this.network.layers[this.network.layers.length - 1].neurons.length,
+                        outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+                        lossTypeId: this.network.lossTypeId,
+                        learningRate: this.network.learningRate,
+                        momentum: this.network.momentum,
+                        weightDecay: this.network.weightDecay,
+                        dropoutRate: this.network.dropoutRate,
+                        batchSize: this.network.batchSize,
+                        initializationStrategyId: this.network.initializationStrategyId,
+                        epoch: this.network.epoch,
+                        currentLoss: this.network.currentLoss,
+                        currentAccuracy: this.network.currentAccuracy,
+                        currentMAE: this.network.currentMAE,
+                        targetMetadata: this.network.targetMetadata,
+                        classWeights: this.network.classWeights,
+                        useClassWeighting: this.network.useClassWeighting,
+                        trainSet: this.trainSet,
+                        testSet: this.testSet,
+                    });
+                }
             });
             container.appendChild(labelConn);
             container.appendChild(selectConn);
@@ -588,6 +646,30 @@ export class UIController {
             btnAddN.onclick = () => {
                 this.network.addNeuronToLayer(layer.id);
                 this.openInspector('layer', layer);
+                if (this.trainSet && this.trainSet.length > 0) {
+                    this.trainingClient.init({
+                        inputCount: this.network.layers[0].neurons.length,
+                        hiddenTopology: this.network.layers.slice(1, -1).map(l => l.neurons.length),
+                        outputCount: this.network.layers[this.network.layers.length - 1].neurons.length,
+                        outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+                        lossTypeId: this.network.lossTypeId,
+                        learningRate: this.network.learningRate,
+                        momentum: this.network.momentum,
+                        weightDecay: this.network.weightDecay,
+                        dropoutRate: this.network.dropoutRate,
+                        batchSize: this.network.batchSize,
+                        initializationStrategyId: this.network.initializationStrategyId,
+                        epoch: this.network.epoch,
+                        currentLoss: this.network.currentLoss,
+                        currentAccuracy: this.network.currentAccuracy,
+                        currentMAE: this.network.currentMAE,
+                        targetMetadata: this.network.targetMetadata,
+                        classWeights: this.network.classWeights,
+                        useClassWeighting: this.network.useClassWeighting,
+                        trainSet: this.trainSet,
+                        testSet: this.testSet,
+                    });
+                }
             };
             container.appendChild(btnAddN);
         } else {
@@ -609,6 +691,30 @@ export class UIController {
             btnLeft.onclick = () => {
                 this.network.insertHiddenLayerAt(idx);
                 this.closeInspector();
+                if (this.trainSet && this.trainSet.length > 0) {
+                    this.trainingClient.init({
+                        inputCount: this.network.layers[0].neurons.length,
+                        hiddenTopology: this.network.layers.slice(1, -1).map(l => l.neurons.length),
+                        outputCount: this.network.layers[this.network.layers.length - 1].neurons.length,
+                        outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+                        lossTypeId: this.network.lossTypeId,
+                        learningRate: this.network.learningRate,
+                        momentum: this.network.momentum,
+                        weightDecay: this.network.weightDecay,
+                        dropoutRate: this.network.dropoutRate,
+                        batchSize: this.network.batchSize,
+                        initializationStrategyId: this.network.initializationStrategyId,
+                        epoch: this.network.epoch,
+                        currentLoss: this.network.currentLoss,
+                        currentAccuracy: this.network.currentAccuracy,
+                        currentMAE: this.network.currentMAE,
+                        targetMetadata: this.network.targetMetadata,
+                        classWeights: this.network.classWeights,
+                        useClassWeighting: this.network.useClassWeighting,
+                        trainSet: this.trainSet,
+                        testSet: this.testSet,
+                    });
+                }
             };
             container.appendChild(btnLeft);
         }
@@ -621,6 +727,30 @@ export class UIController {
             btnRight.onclick = () => {
                 this.network.insertHiddenLayerAt(idx + 1);
                 this.closeInspector();
+                if (this.trainSet && this.trainSet.length > 0) {
+                    this.trainingClient.init({
+                        inputCount: this.network.layers[0].neurons.length,
+                        hiddenTopology: this.network.layers.slice(1, -1).map(l => l.neurons.length),
+                        outputCount: this.network.layers[this.network.layers.length - 1].neurons.length,
+                        outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+                        lossTypeId: this.network.lossTypeId,
+                        learningRate: this.network.learningRate,
+                        momentum: this.network.momentum,
+                        weightDecay: this.network.weightDecay,
+                        dropoutRate: this.network.dropoutRate,
+                        batchSize: this.network.batchSize,
+                        initializationStrategyId: this.network.initializationStrategyId,
+                        epoch: this.network.epoch,
+                        currentLoss: this.network.currentLoss,
+                        currentAccuracy: this.network.currentAccuracy,
+                        currentMAE: this.network.currentMAE,
+                        targetMetadata: this.network.targetMetadata,
+                        classWeights: this.network.classWeights,
+                        useClassWeighting: this.network.useClassWeighting,
+                        trainSet: this.trainSet,
+                        testSet: this.testSet,
+                    });
+                }
             };
             container.appendChild(btnRight);
         }
@@ -633,6 +763,30 @@ export class UIController {
             btnDeleteLayer.onclick = () => {
                 this.network.removeLayer(layer.id);
                 this.closeInspector();
+                if (this.trainSet && this.trainSet.length > 0) {
+                    this.trainingClient.init({
+                        inputCount: this.network.layers[0].neurons.length,
+                        hiddenTopology: this.network.layers.slice(1, -1).map(l => l.neurons.length),
+                        outputCount: this.network.layers[this.network.layers.length - 1].neurons.length,
+                        outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+                        lossTypeId: this.network.lossTypeId,
+                        learningRate: this.network.learningRate,
+                        momentum: this.network.momentum,
+                        weightDecay: this.network.weightDecay,
+                        dropoutRate: this.network.dropoutRate,
+                        batchSize: this.network.batchSize,
+                        initializationStrategyId: this.network.initializationStrategyId,
+                        epoch: this.network.epoch,
+                        currentLoss: this.network.currentLoss,
+                        currentAccuracy: this.network.currentAccuracy,
+                        currentMAE: this.network.currentMAE,
+                        targetMetadata: this.network.targetMetadata,
+                        classWeights: this.network.classWeights,
+                        useClassWeighting: this.network.useClassWeighting,
+                        trainSet: this.trainSet,
+                        testSet: this.testSet,
+                    });
+                }
             };
             container.appendChild(btnDeleteLayer);
         }
@@ -671,6 +825,10 @@ export class UIController {
             }
             this.renderer.render(this.network);
             this.updateInspectorValues();
+
+            if (this.trainSet && this.trainSet.length > 0) {
+                this.trainingClient.setNetwork(this.network);
+            }
         };
 
         wrapper.appendChild(input);
@@ -705,6 +863,9 @@ export class UIController {
                 object.activate();
                 this.renderer.render(this.network);
                 this.updateInspectorValues();
+                if (this.trainSet && this.trainSet.length > 0) {
+                    this.trainingClient.setNetwork(this.network);
+                }
             });
             container.appendChild(labelAct);
             container.appendChild(selectAct);
@@ -743,6 +904,9 @@ export class UIController {
                         if (sourceNeuron) {
                             this.network.addManualConnection(sourceNeuron, object);
                             this.openInspector('neuron', object);
+                            if (this.trainSet && this.trainSet.length > 0) {
+                                this.trainingClient.setNetwork(this.network);
+                            }
                         }
                     };
 
@@ -787,6 +951,9 @@ export class UIController {
                         if (targetNeuron) {
                             this.network.addManualConnection(object, targetNeuron);
                             this.openInspector('neuron', object);
+                            if (this.trainSet && this.trainSet.length > 0) {
+                                this.trainingClient.setNetwork(this.network);
+                            }
                         }
                     };
 
@@ -812,7 +979,33 @@ export class UIController {
                 btnDeleteN.innerText = '🗑️ Eliminar esta Neurona';
                 btnDeleteN.onclick = () => {
                     const exito = this.network.removeNeuron(object.id);
-                    if (exito) this.closeInspector();
+                    if (exito) {
+                        this.closeInspector();
+                        if (this.trainSet && this.trainSet.length > 0) {
+                            this.trainingClient.init({
+                                inputCount: this.network.layers[0].neurons.length,
+                                hiddenTopology: this.network.layers.slice(1, -1).map(l => l.neurons.length),
+                                outputCount: this.network.layers[this.network.layers.length - 1].neurons.length,
+                                outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+                                lossTypeId: this.network.lossTypeId,
+                                learningRate: this.network.learningRate,
+                                momentum: this.network.momentum,
+                                weightDecay: this.network.weightDecay,
+                                dropoutRate: this.network.dropoutRate,
+                                batchSize: this.network.batchSize,
+                                initializationStrategyId: this.network.initializationStrategyId,
+                                epoch: this.network.epoch,
+                                currentLoss: this.network.currentLoss,
+                                currentAccuracy: this.network.currentAccuracy,
+                                currentMAE: this.network.currentMAE,
+                                targetMetadata: this.network.targetMetadata,
+                                classWeights: this.network.classWeights,
+                                useClassWeighting: this.network.useClassWeighting,
+                                trainSet: this.trainSet,
+                                testSet: this.testSet,
+                            });
+                        }
+                    }
                 };
             }
             container.appendChild(btnDeleteN);
@@ -826,7 +1019,12 @@ export class UIController {
             btnDeleteConn.innerText = '🗑️ Romper esta Conexión';
             btnDeleteConn.onclick = () => {
                 const exito = this.network.removeConnection(object.id);
-                if (exito) this.closeInspector();
+                if (exito) {
+                    this.closeInspector();
+                    if (this.trainSet && this.trainSet.length > 0) {
+                        this.trainingClient.setNetwork(this.network);
+                    }
+                }
             };
             container.appendChild(btnDeleteConn);
         }
@@ -853,6 +1051,28 @@ export class UIController {
                     const jsonData = JSON.parse(e.target.result);
                     
                     const success = importModel(jsonData, this.network, this, this.renderer);
+
+                    if (success) {
+                        // Sincronizar el worker con el modelo importado
+                        this.trainingClient.init({
+                            inputCount: this.network.layers[0].neurons.length,
+                            hiddenTopology: this.network.layers.slice(1, -1).map(l => l.neurons.length),
+                            outputCount: this.network.layers[this.network.layers.length - 1].neurons.length,
+                            outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+                            lossTypeId: this.network.lossTypeId,
+                            learningRate: this.network.learningRate,
+                            momentum: this.network.momentum,
+                            weightDecay: this.network.weightDecay,
+                            dropoutRate: this.network.dropoutRate,
+                            batchSize: this.network.batchSize,
+                            initializationStrategyId: this.network.initializationStrategyId,
+                            targetMetadata: this.network.targetMetadata,
+                            classWeights: this.network.classWeights,
+                            useClassWeighting: this.network.useClassWeighting,
+                            trainSet: this.trainSet || [],
+                            testSet: this.testSet || [],
+                        });
+                    }
                     
                 } catch (err) {
                     alert("El archivo seleccionado no contiene un formato JSON válido.");
