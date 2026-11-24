@@ -76,7 +76,7 @@ export class UIController {
 
         this.trainingClient = new TrainingClient();
 
-        // Cuando el worker termina una época, actualizamos la red local y la UI
+        // Cuando el worker MLP termina una época, actualizamos la red local y la UI
         this.trainingClient.on('ready', (payload) => {
             if (payload?.network) this.network.applySnapshot(payload.network);
             this.renderer.render(this.network);
@@ -106,6 +106,8 @@ export class UIController {
             console.error('Worker error:', payload?.message);
             alert('Error en el worker de entrenamiento: ' + (payload?.message || 'desconocido'));
         });
+
+
 
         this.metricsChart = new MetricsChart();
         this.predictionModal = new PredictionModal(this.network, this);
@@ -309,6 +311,9 @@ export class UIController {
             this.csvController.compileSelectedArchitecture();
         });
     }
+
+
+
 
     /**
      * Conecta los botones físicos de reproducción con los métodos del motor asíncrono
@@ -536,6 +541,8 @@ export class UIController {
     /**
      * Sincroniza los textos de métricas globales leyendo directamente desde el objeto Network
      */
+
+
     syncMetrics() {
         this.dom.lblLoss.innerText = (this.network.currentLoss || 0).toFixed(4);
 
@@ -1066,6 +1073,10 @@ export class UIController {
                             dropoutRate: this.network.dropoutRate,
                             batchSize: this.network.batchSize,
                             initializationStrategyId: this.network.initializationStrategyId,
+                            epoch: this.network.epoch,
+                            currentLoss: this.network.currentLoss,
+                            currentAccuracy: this.network.currentAccuracy,
+                            currentMAE: this.network.currentMAE,
                             targetMetadata: this.network.targetMetadata,
                             classWeights: this.network.classWeights,
                             useClassWeighting: this.network.useClassWeighting,

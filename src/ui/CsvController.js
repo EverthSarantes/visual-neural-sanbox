@@ -229,7 +229,6 @@ export class CsvController {
         this.ui.trainSet = fullDataset.slice(0, cutoff);
         this.ui.testSet = fullDataset.slice(cutoff);
 
-        this.ui.engine = null;
         this.ui.trainingClient.init({
             inputCount: inputCount,
             hiddenTopology: [4],
