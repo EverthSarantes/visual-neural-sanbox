@@ -36,23 +36,17 @@ export function forwardPass(network, inputVector) {
         const layer = network.layers[i];
         const activationMethod = getActivation(layer.activationId);
 
+        // 1. Calcular la suma neta de cada neurona (representación física)
         layer.neurons.forEach(neuron => {
             if (neuron.isDropped) {
                 neuron.netInput = 0;
                 neuron.value = 0;
                 return;
             }
-
-            let sum = 0;
-            neuron.inputs.forEach(connection => {
-                if (!connection.from.isDropped && !connection.isDropped) {
-                    sum += connection.from.value * connection.weight;
-                }
-            });
-
-            neuron.netInput = sum + neuron.bias;
+            neuron.computeNetInput();
         });
 
+        // 2. Aplicar la función de activación
         if (activationMethod.calculateLayer) {
             activationMethod.calculateLayer(layer, network);
         } else {
