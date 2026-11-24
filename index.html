@@ -21,6 +21,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <style>
         /* Transición suave para la apertura/cierre de paneles */
         .panel-transition {
@@ -59,7 +60,7 @@
     <main class="flex-1 flex flex-col lg:flex-row overflow-hidden p-2 lg:p-4 gap-2 lg:gap-4 relative">
 
         <section id="panel-left" class="fixed lg:static inset-y-0 left-0 z-30 w-72 sm:w-80 bg-slate-800/95 lg:bg-slate-800/40 border-r lg:border border-slate-800 rounded-none lg:rounded-xl p-4 flex flex-col space-y-5 overflow-y-auto backdrop-blur-sm panel-transition shrink-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300">
-            
+
             <div>
                 <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">1. Carga de Datos (.CSV)</h2>
                 
@@ -89,8 +90,6 @@
                         Confirmar y Construir Red
                     </button>
                 </div>
-            </div>
-
             <hr class="border-slate-800/80">
 
             <div>
