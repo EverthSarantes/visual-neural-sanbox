@@ -62,7 +62,15 @@
         <section id="panel-left" class="fixed lg:static inset-y-0 left-0 z-30 w-72 sm:w-80 bg-slate-800/95 lg:bg-slate-800/40 border-r lg:border border-slate-800 rounded-none lg:rounded-xl p-4 flex flex-col space-y-5 overflow-y-auto backdrop-blur-sm panel-transition shrink-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300">
 
             <div>
-                <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">1. Carga de Datos (.CSV)</h2>
+                <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">1. Tipo de Datos</h2>
+                <div class="flex gap-2 mb-3">
+                    <button id="btn-data-type-csv" class="flex-1 text-xs font-semibold py-2 rounded-lg border border-slate-700 bg-indigo-600 text-white transition-colors">CSV / Tabular</button>
+                    <button id="btn-data-type-img" class="flex-1 text-xs font-semibold py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 transition-colors">Imágenes</button>
+                </div>
+            </div>
+
+            <div id="section-csv">
+                <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">Carga de Datos (.CSV)</h2>
                 
                 <div id="csv-dropzone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/80 bg-slate-900/30 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all group">
                     <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📄</span>
@@ -90,6 +98,27 @@
                         Confirmar y Construir Red
                     </button>
                 </div>
+            </div>
+
+            <div id="section-images" class="hidden">
+                <h2 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3">Imágenes (.zip / carpeta)</h2>
+                <div class="space-y-2">
+                    <input type="file" id="image-file-input" accept=".zip,image/*" webkitdirectory directory multiple class="w-full text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-indigo-600 file:text-white">
+                    <div class="flex items-center gap-2 text-xs text-slate-300">
+                        <span>Canales:</span>
+                        <select id="image-channels" class="bg-slate-900 border border-slate-700 rounded p-1 text-xs text-white">
+                            <option value="1">1 (Grayscale)</option>
+                            <option value="3" selected>3 (RGB)</option>
+                        </select>
+                    </div>
+                    <div id="image-summary" class="bg-slate-900/40 border border-slate-800 p-2 rounded-lg text-xs min-h-[40px]"></div>
+                    <div id="image-thumbnails" class="flex flex-col gap-2 max-h-48 overflow-y-auto"></div>
+                    <button id="btn-confirm-images" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold p-2 rounded-lg text-xs transition-colors shadow-lg shadow-emerald-600/10">
+                        Confirmar y Construir Red (Imágenes)
+                    </button>
+                </div>
+            </div>
+
             <hr class="border-slate-800/80">
 
             <div>

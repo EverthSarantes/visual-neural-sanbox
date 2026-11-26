@@ -9,6 +9,7 @@ import { MetricsChart } from './MetricsChart.js';
 import { exportModel, importModel } from '../utils/Persistence.js';
 import { PredictionModal } from './PredictionModal.js';
 import { CsvController } from './CsvController.js';
+import { ImageController } from './ImageController.js';
 
 export class UIController {
     /**
@@ -112,11 +113,14 @@ export class UIController {
         this.metricsChart = new MetricsChart();
         this.predictionModal = new PredictionModal(this.network, this);
         this.csvController = new CsvController(this);
+        this.imageController = new ImageController(this);
 
         this.populateLossSelect();
         this.populateInitializationSelect();
         this.initEventListeners();
         this.initCsvListeners();
+        this.initImageListeners();
+        this.initDataTypeListeners();
         this.initPlaybackListeners();
         this.syncMetrics();
     }
@@ -310,6 +314,55 @@ export class UIController {
         this.dom.btnConfirmMapping.addEventListener('click', () => {
             this.csvController.compileSelectedArchitecture();
         });
+    }
+
+    initImageListeners() {
+        const input = document.getElementById('image-file-input');
+        const btn = document.getElementById('btn-confirm-images');
+        if (!input || !btn) return;
+        input.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                this.imageController.handleImageUpload(e.target.files);
+            }
+        });
+
+        const channelsSelect = document.getElementById('image-channels');
+        if (channelsSelect) {
+            channelsSelect.addEventListener('change', (e) => {
+                this.imageController.loader.channels = parseInt(e.target.value, 10);
+            });
+        }
+        btn.addEventListener('click', () => {
+            this.imageController.compileImageArchitecture();
+        });
+    }
+
+    initDataTypeListeners() {
+        const btnCsv = document.getElementById('btn-data-type-csv');
+        const btnImg = document.getElementById('btn-data-type-img');
+        const secCsv = document.getElementById('section-csv');
+        const secImg = document.getElementById('section-images');
+        if (!btnCsv || !btnImg || !secCsv || !secImg) return;
+        const activate = (type) => {
+            if (type === 'csv') {
+                secCsv.classList.remove('hidden');
+                secImg.classList.add('hidden');
+                btnCsv.classList.add('bg-indigo-600', 'text-white');
+                btnCsv.classList.remove('bg-slate-800', 'text-slate-300');
+                btnImg.classList.remove('bg-indigo-600', 'text-white');
+                btnImg.classList.add('bg-slate-800', 'text-slate-300');
+            } else {
+                secCsv.classList.add('hidden');
+                secImg.classList.remove('hidden');
+                btnImg.classList.add('bg-indigo-600', 'text-white');
+                btnImg.classList.remove('bg-slate-800', 'text-slate-300');
+                btnCsv.classList.remove('bg-indigo-600', 'text-white');
+                btnCsv.classList.add('bg-slate-800', 'text-slate-300');
+            }
+        };
+        btnCsv.addEventListener('click', () => activate('csv'));
+        btnImg.addEventListener('click', () => activate('img'));
+        activate('csv');
     }
 
 
@@ -607,6 +660,32 @@ export class UIController {
             this.network.applyWeightInitialization();
             this.renderer.render(this.network);
             this.openInspector('layer', layer);
+            if (this.trainSet && this.trainSet.length > 0) {
+                const layerTypes = this.network.layers.map(l => l.layerType || 'linear');
+                this.trainingClient.init({
+                    inputCount: this.network.layers[0].neurons.length || 1,
+                    hiddenTopology: this.network.layers.slice(1, -1).map(l => l.neurons.length || 1),
+                    outputCount: this.network.layers[this.network.layers.length - 1].neurons.length || 1,
+                    outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
+                    layerTypes: layerTypes,
+                    lossTypeId: this.network.lossTypeId,
+                    learningRate: this.network.learningRate,
+                    momentum: this.network.momentum,
+                    weightDecay: this.network.weightDecay,
+                    dropoutRate: this.network.dropoutRate,
+                    batchSize: this.network.batchSize,
+                    initializationStrategyId: this.network.initializationStrategyId,
+                    epoch: this.network.epoch,
+                    currentLoss: this.network.currentLoss,
+                    currentAccuracy: this.network.currentAccuracy,
+                    currentMAE: this.network.currentMAE,
+                    targetMetadata: this.network.targetMetadata,
+                    classWeights: this.network.classWeights,
+                    useClassWeighting: this.network.useClassWeighting,
+                    trainSet: this.trainSet,
+                    testSet: this.testSet,
+                });
+            }
         });
         container.appendChild(labelType);
         container.appendChild(selectType);
