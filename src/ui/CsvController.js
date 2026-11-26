@@ -232,6 +232,7 @@ export class CsvController {
         this.ui.trainingClient.init({
             inputCount: inputCount,
             hiddenTopology: [4],
+            layerTypes: ['linear', 'linear', 'linear'],
             outputCount: outputCount,
             outputActivation: this.network.layers[this.network.layers.length - 1].activationId,
             lossTypeId: this.network.lossTypeId,

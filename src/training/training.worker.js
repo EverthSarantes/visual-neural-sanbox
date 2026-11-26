@@ -139,18 +139,19 @@ self.onmessage = async (e) => {
                 network.classWeights = payload.classWeights || [];
                 network.useClassWeighting = payload.useClassWeighting || false;
 
+                const layerTypes = payload.layerTypes || ['linear', 'linear', 'linear'];
                 // buildArchitecture manual para controlar activaciones
-                const inputLayer = new Layer('input', 'input', 'none');
+                const inputLayer = new Layer('input', 'input', 'none', layerTypes[0] || 'linear', {});
                 inputLayer.addNeurons(payload.inputCount);
                 network.layers.push(inputLayer);
 
                 (payload.hiddenTopology || []).forEach((count, idx) => {
-                    const hl = new Layer(`hidden_${idx}`, 'hidden', 'relu');
+                    const hl = new Layer(`hidden_${idx}`, 'hidden', 'relu', layerTypes[1] || 'linear', {});
                     hl.addNeurons(count);
                     network.layers.push(hl);
                 });
 
-                const outputLayer = new Layer('output', 'output', payload.outputActivation || 'sigmoid');
+                const outputLayer = new Layer('output', 'output', payload.outputActivation || 'sigmoid', layerTypes[2] || 'linear', {});
                 outputLayer.addNeurons(payload.outputCount);
                 network.layers.push(outputLayer);
 

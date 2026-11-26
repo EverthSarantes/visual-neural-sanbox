@@ -228,11 +228,16 @@ export class Network {
         this.classWeights = snapshot.classWeights || [];
         this.useClassWeighting = snapshot.useClassWeighting || false;
 
+        // Preserve layerType from existing layers (worker may send 'linear' for all)
+        const existingLayerTypes = new Map();
+        this.layers.forEach(l => existingLayerTypes.set(l.id, l.layerType));
+
         this.layers = [];
         const neuronMap = new Map();
 
         (snapshot.layers || []).forEach(layerData => {
-            const layer = new Layer(layerData.id, layerData.type, layerData.activationId, layerData.layerType || 'linear', layerData.params || {});
+            const preservedType = existingLayerTypes.get(layerData.id) || layerData.layerType || 'linear';
+            const layer = new Layer(layerData.id, layerData.type, layerData.activationId, preservedType, layerData.params || {});
             layer.connectionTypeId = layerData.connectionTypeId;
             layer.neuronSeed = layerData.neuronSeed;
 
