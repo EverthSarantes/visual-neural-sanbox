@@ -15,6 +15,7 @@ const renderer = new CanvasRenderer(canvasElement);
 
 // Instanciar el controlador central de eventos e interfaz
 const ui = new UIController(network, renderer);
+window.ui = ui;
 
 // Pintar la red por primera vez
 renderer.render(network);
