@@ -3,7 +3,7 @@ import { getActivation } from '../activation_methods/registry.js';
 import { getLayerType } from '../layer_types/registry.js';
 
 export class Layer {
-    constructor(id, type, activationId = 'relu', layerType = 'dense', params = {}) {
+    constructor(id, type, activationId = 'relu', layerType = 'linear', params = {}) {
         this.id = id;
         this.type = type; // 'input' | 'hidden' | 'output'
 

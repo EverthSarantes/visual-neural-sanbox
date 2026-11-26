@@ -6,9 +6,9 @@
 import * as L from '../math/layers.js';
 
 export const layerTypeRegistry = {
-    dense: {
-        id: 'dense',
-        name: 'Densa (Fully Connected)',
+    linear: {
+        id: 'linear',
+        name: 'Lineal',
         description: 'Capa tradicional: cada neurona se conecta con todas las de la capa anterior.',
         hasWeights: true,
         forward: L.denseForward,
