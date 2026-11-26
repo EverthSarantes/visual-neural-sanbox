@@ -43,7 +43,7 @@ function serializeNetwork(net) {
                     weight: conn.weight,
                     velocity: conn.velocity,
                     isDropped: conn.isDropped,
-                    fromId: conn.from.id
+                    fromNeuronId: conn.from.id
                 }))
             }))
         }))

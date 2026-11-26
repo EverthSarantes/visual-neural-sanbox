@@ -565,7 +565,86 @@ export class UIController {
         document.getElementById('row-inspect-value').style.display = 'none';
         document.getElementById('row-inspect-net').style.display = 'none';
 
-        // Selector de Función de Activación de la Capa
+        // Selector de Tipo de Capa
+        const labelType = document.createElement('label');
+        labelType.className = 'block text-slate-400 mb-1 text-xs';
+        labelType.innerText = 'Tipo de Capa:';
+        const selectType = document.createElement('select');
+        selectType.className = 'w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white mb-3 focus:outline-none focus:border-indigo-500';
+        const types = [
+            { id: 'linear', name: 'Lineal' },
+            { id: 'conv2d', name: 'Convolución 2D' },
+            { id: 'maxpool2d', name: 'Max Pooling 2D' },
+            { id: 'flatten', name: 'Flatten' },
+        ];
+        types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.innerText = t.name;
+            if (layer.layerType === t.id || (!layer.layerType && t.id === 'linear')) opt.selected = true;
+            selectType.appendChild(opt);
+        });
+        selectType.addEventListener('change', (e) => {
+            layer.layerType = e.target.value;
+            // Set default params
+            if (layer.layerType === 'conv2d' && !layer.params) layer.params = { filters: 8, kernelSize: 3, padding: 1, stride: 1 };
+            if (layer.layerType === 'maxpool2d' && !layer.params) layer.params = { poolSize: 2, stride: 2 };
+            if (layer.layerType === 'flatten') layer.params = {};
+            if (layer.layerType === 'linear') layer.params = {};
+            // Init params if null
+            if (!layer.params) layer.params = {};
+            if (layer.layerType === 'conv2d') {
+                if (!layer.params.filters) layer.params.filters = 8;
+                if (!layer.params.kernelSize) layer.params.kernelSize = 3;
+                if (layer.params.padding === undefined) layer.params.padding = 1;
+                if (!layer.params.stride) layer.params.stride = 1;
+            }
+            if (layer.layerType === 'maxpool2d') {
+                if (!layer.params.poolSize) layer.params.poolSize = 2;
+                if (!layer.params.stride) layer.params.stride = layer.params.poolSize;
+            }
+            this.network.rebuildConnections();
+            this.network.applyWeightInitialization();
+            this.renderer.render(this.network);
+            this.openInspector('layer', layer);
+        });
+        container.appendChild(labelType);
+        container.appendChild(selectType);
+
+        // Parámetros de capa (conv/pool)
+        if (layer.layerType === 'conv2d' || layer.layerType === 'maxpool2d') {
+            const paramsDiv = document.createElement('div');
+            paramsDiv.className = 'space-y-2 mb-3';
+            const params = layer.params || {};
+            const keys = layer.layerType === 'conv2d' ? ['filters', 'kernelSize', 'padding', 'stride'] : ['poolSize', 'stride'];
+            keys.forEach(key => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between';
+                const label = document.createElement('span');
+                label.className = 'text-xs text-slate-400';
+                label.innerText = key;
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.value = params[key] !== undefined ? params[key] : '';
+                input.className = 'w-16 bg-slate-900 border border-slate-700 rounded p-1 text-xs text-white';
+                input.addEventListener('change', () => {
+                    const val = parseInt(input.value, 10);
+                    if (!isNaN(val)) {
+                        if (!layer.params) layer.params = {};
+                        layer.params[key] = val;
+                        this.network.applyWeightInitialization();
+                        this.renderer.render(this.network);
+                    }
+                });
+                row.appendChild(label);
+                row.appendChild(input);
+                paramsDiv.appendChild(row);
+            });
+            container.appendChild(paramsDiv);
+        }
+
+        // Selector de Función de Activación de la Capa (solo dense)
+        if (layer.layerType === 'linear') {
         const labelAct = document.createElement('label');
         labelAct.className = 'block text-slate-400 mb-1 text-xs';
         labelAct.innerText = 'Función de Activación:';
@@ -590,8 +669,9 @@ export class UIController {
         });
         container.appendChild(labelAct);
         container.appendChild(selectAct);
+        }
 
-        if (layer.type !== 'output') {
+        if (layer.type !== 'output' && layer.layerType === 'linear') {
             const labelConn = document.createElement('label');
             labelConn.className = 'block text-slate-400 mb-1 text-xs';
             labelConn.innerText = 'Método de Conexión Saliente:';
@@ -652,7 +732,8 @@ export class UIController {
             btnAddN.innerText = '➕ Añadir Neurona a la Capa';
             btnAddN.onclick = () => {
                 this.network.addNeuronToLayer(layer.id);
-                this.openInspector('layer', layer);
+                const freshLayer = this.network.layers.find(l => l.id === layer.id) || layer;
+                this.openInspector('layer', freshLayer);
                 if (this.trainSet && this.trainSet.length > 0) {
                     this.trainingClient.init({
                         inputCount: this.network.layers[0].neurons.length,

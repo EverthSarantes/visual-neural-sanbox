@@ -39,6 +39,12 @@ export function exportModel(network, uiController, version = "1.0.0") {
             activationId: layer.activationId,
             connectionTypeId: layer.connectionTypeId,
             neuronSeed: layer.neuronSeed,
+            layerType: layer.layerType,
+            params: layer.params,
+            weights: layer.weights ? Array.from(layer.weights) : null,
+            bias: layer.bias ? Array.from(layer.bias) : null,
+            gradW: layer.gradW ? Array.from(layer.gradW) : null,
+            gradB: layer.gradB ? Array.from(layer.gradB) : null,
             neurons: layer.neurons.map((neuron, nIdx) => ({
                 neuronIndex: nIdx,
                 id: neuron.id,
